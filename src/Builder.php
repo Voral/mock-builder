@@ -9,6 +9,7 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Interface_;
+use PhpParser\Node\Stmt\Trait_;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
@@ -102,15 +103,17 @@ class Builder
                 }
 
                 foreach ($node->stmts as $stmt) {
-                    if ($stmt instanceof Class_ || $stmt instanceof Interface_) {
+                    if ($this->hasName($stmt)) {
+                        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
                         $class = $stmt->name->name;
                         break;
                     }
                 }
             }
-
-            if ($node instanceof Class_ || $node instanceof Interface_) {
+            if ($this->hasName($node)) {
+                /** @noinspection PhpPossiblePolymorphicInvocationInspection */
                 $class = $node->name->name;
+                break;
             }
         }
 
@@ -141,6 +144,11 @@ class Builder
         if (false === file_put_contents($targetFile, $newCode)) {
             echo "Failed to save transformed file: {$targetFile}\n";
         }
+    }
+
+    private function hasName(mixed $item): bool
+    {
+        return $item instanceof Class_ || $item instanceof Interface_ || $item instanceof Trait_;
     }
 
     private function matchesFilter(string $className): bool

@@ -6,6 +6,7 @@ namespace Vasoft\MockBuilder\Modifier;
 
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Trait_;
 use PhpParser\NodeVisitorAbstract;
 
 /**
@@ -23,7 +24,7 @@ class PublicMethodVisitor extends NodeVisitorAbstract
      */
     public function leaveNode($node): void
     {
-        if ($node instanceof Class_) {
+        if ($node instanceof Class_ || $node instanceof Trait_) {
             $node->stmts = array_filter($node->stmts, static fn($stmt) => $stmt instanceof ClassMethod
                 && $stmt->isPublic());
 
