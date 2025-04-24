@@ -1,6 +1,12 @@
 {
   "name": "voral/mock-builder",
+  "description": "A PHP utility to generate mock classes by processing source code, leaving only public methods and clearing their bodies. Supports PSR-4 and is ideal for testing complex systems without Dependency Injection.",
   "type": "library",
+  "homepage": "https://github.com/Voral/mock-builder",
+  "support": {
+    "issues": "https://github.com/Voral/mock-builder/issues",
+    "email": "voral.adm@gmail.com"
+  },
   "require": {
     "php": ">=8.1",
     "nikic/php-parser": "^5.4"
@@ -41,9 +47,22 @@
     "fixer": "Check coding standards using PHP-CS-Fixer (dry-run mode).",
     "check": "Run all checks, including coding standards and static analysis."
   },
-  "sort-packages": true,
   "bin": [
     "bin/vs-mock-builder.php"
   ],
-  "version": "0.0.1"
+  "keywords": [
+    "php",
+    "mock",
+    "mock-generator",
+    "testing",
+    "unit-testing",
+    "psr-4",
+    "dependency-injection",
+    "code-transformation",
+    "legacy-systems"
+  ],
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  }
 }

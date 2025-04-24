@@ -6,3 +6,4 @@
 /composer.lock export-ignore
 /.vs-mock-builder.php export-ignore
 /target export-ignore
+/.gitattributes export-ignore
