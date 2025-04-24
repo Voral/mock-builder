@@ -7,3 +7,4 @@
 /.vs-mock-builder.php export-ignore
 /target export-ignore
 /.gitattributes export-ignore
+/.vs-version-increment.php export-ignore
