@@ -29,7 +29,11 @@ class PublicMethodVisitor extends NodeVisitorAbstract
 
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
-                    $method->stmts = [];
+                    if ($method->isAbstract()) {
+                        $method->stmts = null;
+                    } else {
+                        $method->stmts = [];
+                    }
                 }
             }
         }
