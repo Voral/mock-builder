@@ -4,3 +4,5 @@
 /.gitignore export-ignore
 /README.ru.md export-ignore
 /composer.lock export-ignore
+/.vs-mock-builder.php export-ignore
+/target export-ignore

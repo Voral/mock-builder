@@ -23,8 +23,9 @@
     }
   ],
   "scripts": {
-    "vi:auto": "php ./bin/vs-version-increment",
-    "vi:debug": "php ./bin/vs-version-increment --debug",
+    "build-mock": "php ./bin/vs-mock-builder.php",
+    "vi:auto": "php vendor/bin/vs-version-increment",
+    "vi:debug": "php vendor/bin/vs-version-increment --debug",
     "stan": "vendor/bin/phpstan analyse src tests",
     "fixer": "vendor/bin/php-cs-fixer fix --dry-run --diff",
     "checkit": [
@@ -33,11 +34,16 @@
     ]
   },
   "scripts-descriptions": {
+    "build-mock": "Test command for building mocks.",
     "vi:auto": "Run the version increment tool in automatic mode.",
     "vi:debug": "Run the version increment tool in debug mode to preview changes without applying them.",
     "stan": "Run PHPStan static analysis on the 'src' and 'tests' directories.",
     "fixer": "Check coding standards using PHP-CS-Fixer (dry-run mode).",
     "check": "Run all checks, including coding standards and static analysis."
   },
-  "sort-packages": true
+  "sort-packages": true,
+  "bin": [
+    "bin/vs-mock-builder.php"
+  ],
+  "version": "0.0.1"
 }
