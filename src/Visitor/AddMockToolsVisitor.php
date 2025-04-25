@@ -19,12 +19,10 @@ class AddMockToolsVisitor extends NodeVisitorAbstract
     public function leaveNode($node)
     {
         if ($node instanceof Class_ || $node instanceof Trait_) {
-            // Инициализируем stmts, если они отсутствуют
             if (!isset($node->stmts)) {
                 $node->stmts = [];
             }
 
-            // Добавляем трейт в начало
             array_unshift(
                 $node->stmts,
                 new TraitUse([
