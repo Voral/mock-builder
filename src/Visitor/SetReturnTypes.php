@@ -11,7 +11,6 @@ use PhpParser\Node\NullableType;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Trait_;
-use PhpParser\NodeVisitorAbstract;
 
 /**
  * PublicMethodVisitor is a custom AST visitor that modifies the Abstract Syntax Tree (AST) of PHP code.
@@ -19,13 +18,15 @@ use PhpParser\NodeVisitorAbstract;
  * - Retain only public methods in classes.
  * - Clear the bodies of these public methods (remove their content).
  */
-class SetReturnTypes extends NodeVisitorAbstract
+class SetReturnTypes extends ModuleVisitor
 {
     private DocBlockFactory $docBlockFactory;
 
     public function __construct(
         private readonly string $targetPhpVersion = PHP_VERSION,
+        bool $skipThrowable = false,
     ) {
+        parent::__construct($skipThrowable);
         $this->docBlockFactory = DocBlockFactory::createInstance();
     }
 

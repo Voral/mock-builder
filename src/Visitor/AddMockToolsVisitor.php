@@ -12,12 +12,14 @@ use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Trait_;
 use PhpParser\Node\Stmt\TraitUse;
-use PhpParser\NodeVisitorAbstract;
 
-class AddMockToolsVisitor extends NodeVisitorAbstract
+class AddMockToolsVisitor extends ModuleVisitor
 {
     public function leaveNode($node)
     {
+        if ($this->needSkip($node)) {
+            return;
+        }
         if ($node instanceof Class_ || $node instanceof Trait_) {
             if (!isset($node->stmts)) {
                 $node->stmts = [];
