@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Vasoft\MockBuilder;
 
-
 use PhpParser\NodeVisitorAbstract;
 
 /**
@@ -75,7 +74,7 @@ class Application
         $builder = new Builder(
             $this->targetPath,
             $this->classNameFilter,
-            $this->visitors
+            $this->visitors,
         );
         if ('' !== $this->filePath) {
             $builder->processFile($this->filePath);
@@ -171,7 +170,9 @@ class Application
             $this->basePath = $config['basePath'] ?? '';
             $this->targetPath = $config['targetPath'] ?? '';
             $this->classNameFilter = $config['classNameFilter'] ?? [];
-            $this->visitors = $config['visitors'] ?? [];
+            if (isset($config['visitors']) && is_array($config['visitors'])) {
+                $this->visitors = array_reverse($config['visitors']);
+            }
         }
     }
 }
