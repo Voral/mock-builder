@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Vasoft\MockBuilder\Visitor;
 
 use phpDocumentor\Reflection\DocBlockFactory;
-use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
@@ -52,12 +51,10 @@ class SetReturnTypes extends NodeVisitorAbstract
 
     private function addReturnType(ClassMethod $method): void
     {
-        // Если тип уже указан, ничего не делаем
         if ($method->returnType) {
             return;
         }
 
-        // Получаем тип из PHPDoc
         $docComment = $method->getDocComment();
         if ($docComment) {
             try {
@@ -67,9 +64,12 @@ class SetReturnTypes extends NodeVisitorAbstract
                     $type = $returnTag[0]->getType();
                     $typeName = (string) $type;
 
-                    // Проверяем версию PHP
+                    $parts = array_map('trim', explode('|', $typeName));
+                    if (count($parts) > 1 && in_array('mixed', $parts, true)) {
+                        $typeName = 'mixed';
+                    }
                     if ('true' === $typeName && version_compare($this->targetPhpVersion, '8.2.0', '<')) {
-                        $typeName = 'bool'; // Заменяем true на bool для совместимости
+                        $typeName = 'bool';
                     }
 
                     if ('$this' === $typeName) {
@@ -77,26 +77,22 @@ class SetReturnTypes extends NodeVisitorAbstract
 
                         return;
                     }
-                    // Если тип "void", добавляем его
                     if ('void' === $typeName) {
                         $method->returnType = new Identifier('void');
 
                         return;
                     }
 
-                    // Если тип nullable, добавляем NullableType
                     if (str_starts_with($typeName, '?')) {
-                        $innerTypeName = substr($typeName, 1); // Убираем "?"
+                        $innerTypeName = substr($typeName, 1);
                         $method->returnType = new NullableType(new Name($innerTypeName));
 
                         return;
                     }
 
-                    // Добавляем простой тип
                     $method->returnType = new Name($typeName);
                 }
             } catch (\Exception $e) {
-                // Логируем ошибку, если PHPDoc некорректен
                 return;
             }
         }
