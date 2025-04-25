@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Vasoft\MockBuilder;
 
+
+use PhpParser\NodeVisitorAbstract;
+
 /**
  * The Application class is the main entry point for the mock builder utility.
  * It is responsible for:
@@ -42,6 +45,10 @@ class Application
      * @var string[]
      */
     private array $classNameFilter = [];
+    /**
+     * @var NodeVisitorAbstract[]
+     */
+    private array $visitors = [];
 
     /**
      * Executes the application logic.
@@ -65,7 +72,11 @@ class Application
         }
         $this->preparePaths();
 
-        $builder = new Builder($this->targetPath, $this->classNameFilter);
+        $builder = new Builder(
+            $this->targetPath,
+            $this->classNameFilter,
+            $this->visitors
+        );
         if ('' !== $this->filePath) {
             $builder->processFile($this->filePath);
         }
@@ -160,6 +171,7 @@ class Application
             $this->basePath = $config['basePath'] ?? '';
             $this->targetPath = $config['targetPath'] ?? '';
             $this->classNameFilter = $config['classNameFilter'] ?? [];
+            $this->visitors = $config['visitors'] ?? [];
         }
     }
 }

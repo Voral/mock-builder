@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace Vasoft\MockBuilder;
 
-use PhpParser\Lexer\Emulative;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
-use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Interface_;
+use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Trait_;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
-use Vasoft\MockBuilder\Modifier\PublicMethodVisitor;
 
 /**
  * The Builder class is responsible for processing PHP files and directories to generate mock classes.
@@ -35,10 +34,12 @@ class Builder
      *                                  If empty, defaults to './target/'.
      * @param string[] $classNameFilter Optional list of substrings to filter class names.
      *                                  Only classes whose names contain at least one of these substrings will be processed.
+     * @param NodeVisitorAbstract[]    $visitors
      */
     public function __construct(
         string $targetPath,
         private readonly array $classNameFilter,
+        private readonly array $visitors = [],
     ) {
         $this->targetPath = '' === $targetPath ? __DIR__ . '/target/' : rtrim($targetPath, '/') . '/';
     }
@@ -72,8 +73,7 @@ class Builder
     {
         $code = file_get_contents($filePath);
 
-        $lexer = new Emulative();
-        $parser = (new ParserFactory())->createForHostVersion($lexer);
+        $parser = (new ParserFactory())->createForHostVersion();
 
         try {
             $ast = $parser->parse($code);
@@ -84,7 +84,9 @@ class Builder
         }
 
         $traverser = new NodeTraverser();
-        $traverser->addVisitor(new PublicMethodVisitor());
+        foreach ($this->visitors as $visitor) {
+            $traverser->addVisitor($visitor);
+        }
         $modifiedAst = $traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();
@@ -101,17 +103,19 @@ class Builder
 
                     return;
                 }
-
                 foreach ($node->stmts as $stmt) {
-                    if ($this->hasName($stmt)) {
-                        /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+                    if (isset($stmt->name->name) && $this->neededNode($stmt)) {
+                        if (!$this->matchesFilter($stmt->name->name)) {
+                            return;
+                        }
                         $class = $stmt->name->name;
                         break;
                     }
                 }
-            }
-            if ($this->hasName($node)) {
-                /** @noinspection PhpPossiblePolymorphicInvocationInspection */
+            } elseif (isset($node->name->name) && $this->neededNode($node)) {
+                if (!$this->matchesFilter($node->name->name)) {
+                    return;
+                }
                 $class = $node->name->name;
                 break;
             }
@@ -120,10 +124,6 @@ class Builder
         if (empty($class)) {
             echo "Class name not found in the file: {$filePath}\n";
 
-            return;
-        }
-
-        if (!$this->matchesFilter($class)) {
             return;
         }
 
@@ -146,7 +146,7 @@ class Builder
         }
     }
 
-    private function hasName(mixed $item): bool
+    private function neededNode(mixed $item): bool
     {
         return $item instanceof Class_ || $item instanceof Interface_ || $item instanceof Trait_;
     }
