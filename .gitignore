@@ -3,3 +3,5 @@ vendor
 .vs-mock-builder.php
 target
 var
+source
+.vs-mock-builder.cache

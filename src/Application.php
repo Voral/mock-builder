@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Vasoft\MockBuilder;
 
-use PhpParser\NodeVisitorAbstract;
+use Vasoft\MockBuilder\Visitor\ModuleVisitor;
 
 /**
  * The Application class is the main entry point for the mock builder utility.
@@ -45,9 +45,14 @@ class Application
      */
     private array $classNameFilter = [];
     /**
-     * @var NodeVisitorAbstract[]
+     * @var ModuleVisitor[]
      */
     private array $visitors = [];
+    private bool $forceUpdate = false;
+    /**
+     * @var mixed|string
+     */
+    private mixed $cacheFileName = './.vs-mock-builder.cache';
 
     /**
      * Executes the application logic.
@@ -72,14 +77,16 @@ class Application
         $this->preparePaths();
 
         $builder = new Builder(
+            $this->basePath,
             $this->targetPath,
             $this->classNameFilter,
             $this->visitors,
+            $this->forceUpdate,
+            $this->cacheFileName,
         );
         if ('' !== $this->filePath) {
             $builder->processFile($this->filePath);
-        }
-        if ('' !== $this->directoryPath) {
+        } elseif ('' !== $this->directoryPath) {
             $builder->processDirectory($this->directoryPath);
         }
     }
@@ -95,6 +102,7 @@ class Application
               -b, --base <path>     Specify the base path for the source files. Default is the current working directory.
               -t, --target <path>   Specify the target path for the generated mocks. Default is the current working directory.
               -f, --filter <filter> Specify a comma-separated list of class names to filter.
+              -c, --clear-cache     Clear the cache before processing.
               -h, --help            Display this help message and exit.
 
             HELP;
@@ -128,9 +136,14 @@ class Application
 
     private function parseArguments(): void
     {
-        $options = getopt('i:d:b:t:f:h', ['file:', 'dir:', 'base:', 'target:', 'filter:', 'help']);
+        $options = getopt('i:d:b:t:f:hc', ['file:', 'dir:', 'base:', 'target:', 'filter:', 'help', 'clear-cache']);
         if (isset($options['h']) || isset($options['help'])) {
             $this->isHelp = true;
+
+            return;
+        }
+        if (isset($options['c']) || isset($options['clear-cache'])) {
+            $this->forceUpdate = true;
 
             return;
         }
@@ -170,6 +183,7 @@ class Application
             $this->basePath = $config['basePath'] ?? '';
             $this->targetPath = $config['targetPath'] ?? '';
             $this->classNameFilter = $config['classNameFilter'] ?? [];
+            $this->cacheFileName = $config['cacheFileName'] ?? './.vs-mock-builder.cache';
             if (isset($config['visitors']) && is_array($config['visitors'])) {
                 $this->visitors = array_reverse($config['visitors']);
             }

@@ -15,10 +15,15 @@ use PhpParser\Node\Stmt\TraitUse;
 
 class AddMockToolsVisitor extends ModuleVisitor
 {
-    public function leaveNode($node)
+    /**
+     * @param mixed $node
+     *
+     * @return null|int|Node|Node[]
+     */
+    public function leaveNode($node): null|array|int|Node
     {
         if ($this->needSkip($node)) {
-            return;
+            return null;
         }
         if ($node instanceof Class_ || $node instanceof Trait_) {
             if (!isset($node->stmts)) {
@@ -35,7 +40,7 @@ class AddMockToolsVisitor extends ModuleVisitor
 
         if ($node instanceof Class_ || $node instanceof Trait_) {
             if (!isset($node->stmts)) {
-                return;
+                return null;
             }
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {

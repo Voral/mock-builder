@@ -10,9 +10,10 @@ use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Trait_;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
+use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
+use Vasoft\MockBuilder\Visitor\ModuleVisitor;
 
 /**
  * The Builder class is responsible for processing PHP files and directories to generate mock classes.
@@ -30,16 +31,19 @@ class Builder
     /**
      * Constructor for the Builder class.
      *
-     * @param string   $targetPath      The target directory for saving transformed files.
-     *                                  If empty, defaults to './target/'.
-     * @param string[] $classNameFilter Optional list of substrings to filter class names.
-     *                                  Only classes whose names contain at least one of these substrings will be processed.
-     * @param NodeVisitorAbstract[]    $visitors
+     * @param string          $targetPath      The target directory for saving transformed files.
+     *                                         If empty, defaults to './target/'.
+     * @param string[]        $classNameFilter Optional list of substrings to filter class names.
+     *                                         Only classes whose names contain at least one of these substrings will be processed.
+     * @param ModuleVisitor[] $visitors
      */
     public function __construct(
+        private readonly string $basePath,
         string $targetPath,
         private readonly array $classNameFilter,
         private readonly array $visitors = [],
+        private readonly bool $forceUpdate = false,
+        private readonly string $cacheFile = '',
     ) {
         $this->targetPath = '' === $targetPath ? __DIR__ . '/target/' : rtrim($targetPath, '/') . '/';
     }
@@ -71,6 +75,7 @@ class Builder
      */
     public function processFile(string $filePath): void
     {
+        echo "Processing file {$filePath}\n";
         $code = file_get_contents($filePath);
 
         $parser = (new ParserFactory())->createForHostVersion();
@@ -84,9 +89,14 @@ class Builder
         }
 
         $traverser = new NodeTraverser();
-        foreach ($this->visitors as $visitor) {
-            $traverser->addVisitor($visitor);
+        if (!empty($this->visitors)) {
+            $graph = new Graph($this->basePath, $this->cacheFile, $this->forceUpdate);
+            foreach ($this->visitors as $visitor) {
+                $visitor->setDependenceGraph($graph);
+                $traverser->addVisitor($visitor);
+            }
         }
+        $traverser->addVisitor(new NameResolver());
         $modifiedAst = $traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();

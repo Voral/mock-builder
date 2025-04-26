@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Vasoft\MockBuilder\Mocker;
 
 trait MockTools
@@ -16,7 +18,7 @@ trait MockTools
         array $results = [],
         array $exceptions = [],
         mixed $defaultResult = null,
-        bool $namedMode = false
+        bool $namedMode = false,
     ): void {
         self::$mockCounter[$methodName] = 0;
         self::$mockResults[$methodName] = $results;
@@ -40,6 +42,7 @@ trait MockTools
         if (isset(self::$mockExceptions[$methodName][$index])) {
             throw new self::$mockExceptions[$methodName][$index]();
         }
+
         return self::$mockResults[$methodName][$index] ?? self::$mockDefaultResults[$methodName] ?? null;
     }
 

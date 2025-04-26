@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Vasoft\MockBuilder\Visitor;
 
 use phpDocumentor\Reflection\DocBlockFactory;
+use phpDocumentor\Reflection\DocBlockFactoryInterface;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Trait_;
+use PhpParser\Node;
 
 /**
  * PublicMethodVisitor is a custom AST visitor that modifies the Abstract Syntax Tree (AST) of PHP code.
@@ -20,7 +22,7 @@ use PhpParser\Node\Stmt\Trait_;
  */
 class SetReturnTypes extends ModuleVisitor
 {
-    private DocBlockFactory $docBlockFactory;
+    private DocBlockFactory|DocBlockFactoryInterface $docBlockFactory;
 
     public function __construct(
         private readonly string $targetPhpVersion = PHP_VERSION,
@@ -34,12 +36,14 @@ class SetReturnTypes extends ModuleVisitor
      * Called when leaving a node during traversal of the AST.
      *
      * @param Class_|Trait_ $node the current node being processed
+     *
+     * @return null|int|Node|Node[]
      */
-    public function leaveNode($node): void
+    public function leaveNode($node): null|array|int|Node
     {
         if ($node instanceof Class_ || $node instanceof Trait_) {
             if (!isset($node->stmts)) {
-                return;
+                return null;
             }
             foreach ($node->stmts as $key => $method) {
                 if ($method instanceof ClassMethod) {
@@ -48,6 +52,8 @@ class SetReturnTypes extends ModuleVisitor
             }
             $node->stmts = array_values($node->stmts);
         }
+
+        return null;
     }
 
     private function addReturnType(ClassMethod $method): void

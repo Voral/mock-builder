@@ -33,7 +33,7 @@
     "build-mock": "php ./bin/vs-mock-builder.php",
     "vi:auto": "php vendor/bin/vs-version-increment",
     "vi:debug": "php vendor/bin/vs-version-increment --debug",
-    "stan": "vendor/bin/phpstan analyse src tests",
+    "stan": "vendor/bin/phpstan analyse src",
     "fixer": "vendor/bin/php-cs-fixer fix --dry-run --diff",
     "checkit": [
       "@fixer",

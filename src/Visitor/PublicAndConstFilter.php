@@ -9,15 +9,20 @@ use PhpParser\Node\Stmt\Class_;
 
 class PublicAndConstFilter extends ModuleVisitor
 {
-    public function leaveNode($node): void
+    /**
+     * @param mixed $node
+     *
+     * @return null|int|Node|Node[]
+     */
+    public function leaveNode($node): null|array|int|Node
     {
         if ($this->needSkip($node)) {
-            return;
+            return null;
         }
 
         if ($node instanceof Class_ || $node instanceof Node\Stmt\Trait_) {
             if (!isset($node->stmts)) {
-                return;
+                return null;
             }
             $node->stmts = array_filter(
                 $node->stmts,
@@ -25,5 +30,7 @@ class PublicAndConstFilter extends ModuleVisitor
                     || ($stmt instanceof Node\Stmt\ClassConst),
             );
         }
+
+        return null;
     }
 }
