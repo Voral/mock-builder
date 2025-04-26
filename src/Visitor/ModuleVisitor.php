@@ -35,4 +35,6 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
 
         return $this->dependenceGraph->isInstanceOf($className, ['Throwable', 'Exception']);
     }
+
+    public function beforeProcess(string $targetPath, string $basePath): void {}
 }

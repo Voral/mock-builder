@@ -75,7 +75,6 @@ class Builder
      */
     public function processFile(string $filePath): void
     {
-        echo "Processing file {$filePath}\n";
         $code = file_get_contents($filePath);
 
         $parser = (new ParserFactory())->createForHostVersion();
@@ -93,6 +92,7 @@ class Builder
             $graph = new Graph($this->basePath, $this->cacheFile, $this->forceUpdate);
             foreach ($this->visitors as $visitor) {
                 $visitor->setDependenceGraph($graph);
+                $visitor->beforeProcess($this->targetPath, $this->basePath);
                 $traverser->addVisitor($visitor);
             }
         }

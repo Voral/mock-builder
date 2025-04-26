@@ -15,6 +15,36 @@ use PhpParser\Node\Stmt\TraitUse;
 
 class AddMockToolsVisitor extends ModuleVisitor
 {
+    private string $baseNamespace;
+    private string $traitName;
+
+    public function __construct(string $baseNamespace, bool $skipThrowable = false)
+    {
+        parent::__construct($skipThrowable);
+        $this->baseNamespace = trim($baseNamespace, '\\');
+        $this->traitName = '\\' . $baseNamespace . '\Mocker\MockTools';
+    }
+
+    public function beforeProcess(string $targetPath, string $basePath): void
+    {
+        $traitTargetDir = $targetPath . '/' . str_replace('\\', '/', $this->baseNamespace) . '/Mocker';
+        $traitTargetFile = $traitTargetDir . '/MockTools.php';
+
+        if (!is_dir($traitTargetDir)) {
+            mkdir($traitTargetDir, 0o775, true);
+        }
+
+        if (!file_exists($traitTargetFile)) {
+            $content = file_get_contents(__DIR__ . '/../Mocker/MockTools.php');
+            $content = str_replace(
+                'namespace Vasoft\MockBuilder\Mocker;',
+                'namespace ' . $this->baseNamespace . '\Mocker;',
+                $content,
+            );
+            file_put_contents($traitTargetFile, $content);
+        }
+    }
+
     /**
      * @param mixed $node
      *
@@ -30,12 +60,7 @@ class AddMockToolsVisitor extends ModuleVisitor
                 $node->stmts = [];
             }
 
-            array_unshift(
-                $node->stmts,
-                new TraitUse([
-                    new Name('\Vasoft\MockBuilder\Mocker\MockTools'),
-                ]),
-            );
+            array_unshift($node->stmts, new TraitUse([new Name($this->traitName)]));
         }
 
         if ($node instanceof Class_ || $node instanceof Trait_) {
