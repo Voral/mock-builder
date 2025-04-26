@@ -100,7 +100,7 @@ final class Graph
     {
         foreach ($ast as $node) {
             if ($node instanceof Namespace_) {
-                if (isset($node->stmts)) {
+                if (!empty($node->stmts)) {
                     $this->prepareClasses($node->stmts, $fileName);
                 }
 

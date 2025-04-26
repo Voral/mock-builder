@@ -80,8 +80,8 @@ class AddMockToolsVisitor extends ModuleVisitor
             new Name('self'),
             'executeMocked',
             [
-                new Node\Scalar\String_($method->name->toString()),
-                new Node\Expr\Array_($params),
+                new Node\Arg(new Node\Scalar\String_($method->name->toString())),
+                new Node\Arg(new Node\Expr\Array_($params)),
             ],
         );
         $returnsValue = $this->shouldReturn($method);
