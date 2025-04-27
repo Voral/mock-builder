@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Vasoft\MockBuilder\Visitor;
 
-use Exception;
 use phpDocumentor\Reflection\DocBlock\Tags\TagWithType;
 use phpDocumentor\Reflection\DocBlockFactory;
 use phpDocumentor\Reflection\DocBlockFactoryInterface;
@@ -102,7 +101,7 @@ class SetReturnTypes extends ModuleVisitor
 
                     $method->returnType = new Name($typeName);
                 }
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 return;
             }
         }

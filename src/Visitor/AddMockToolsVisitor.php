@@ -25,9 +25,13 @@ class AddMockToolsVisitor extends ModuleVisitor
         $this->traitName = '\\' . $baseNamespace . '\Mocker\MockTools';
     }
 
-    public function beforeProcess(string $targetPath, string $basePath): void
+    public function beforeProcess(): void
     {
-        $traitTargetDir = $targetPath . '/' . str_replace('\\', '/', $this->baseNamespace) . '/Mocker';
+        if (null === $this->config) {
+            return;
+        }
+
+        $traitTargetDir = $this->config->targetPath . '/' . str_replace('\\', '/', $this->baseNamespace) . '/Mocker';
         $traitTargetFile = $traitTargetDir . '/MockTools.php';
 
         if (!is_dir($traitTargetDir)) {

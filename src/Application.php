@@ -22,28 +22,7 @@ class Application
      * Indicates whether the help message should be displayed.
      */
     private bool $isHelp = false;
-    /**
-     * Path to the input file to be processed.
-     */
-    private string $filePath = '';
-    /**
-     * Path to the directory containing files to be processed.
-     */
-    private string $directoryPath = '';
-    /**
-     * Base path for resolving relative paths.
-     */
-    private string $basePath = '';
-    /**
-     * Target path where the transformed files will be saved.
-     */
-    private string $targetPath = '';
-    /**
-     * List of class name filters to include specific classes during processing.
-     *
-     * @var string[]
-     */
-    private array $classNameFilter = [];
+
     /**
      * @var ModuleVisitor[]
      */
@@ -52,7 +31,7 @@ class Application
     /**
      * @var mixed|string
      */
-    private mixed $cacheFileName = './.vs-mock-builder.cache';
+    private mixed $cachePath = './.vs-mock-builder.cache';
 
     /**
      * Executes the application logic.
@@ -67,28 +46,16 @@ class Application
      */
     public function run(): void
     {
-        $this->loadConfiguration();
-        $this->parseArguments();
+        $config = $this->parseArguments($this->loadConfiguration());
         if ($this->isHelp) {
             $this->printHelp();
 
             return;
         }
-        $this->preparePaths();
+        $config = $this->preparePaths($config);
 
-        $builder = new Builder(
-            $this->basePath,
-            $this->targetPath,
-            $this->classNameFilter,
-            $this->visitors,
-            $this->forceUpdate,
-            $this->cacheFileName,
-        );
-        if ('' !== $this->filePath) {
-            $builder->processFile($this->filePath);
-        } elseif ('' !== $this->directoryPath) {
-            $builder->processDirectory($this->directoryPath);
-        }
+        (new Builder($config, $this->visitors, $this->forceUpdate, $this->cachePath))
+            ->run();
     }
 
     private function printHelp(): void
@@ -97,96 +64,88 @@ class Application
             Usage: php vs-mock-builder.php [options]
 
             Options:
-              -i, --file <path>     Specify the path to a PHP file to be processed.
-              -d, --dir <path>      Specify the path to a directory containing PHP files to be processed.
               -b, --base <path>     Specify the base path for the source files. Default is the current working directory.
               -t, --target <path>   Specify the target path for the generated mocks. Default is the current working directory.
               -f, --filter <filter> Specify a comma-separated list of class names to filter.
+              -d, --display         Whether to display the progress during processing.
               -c, --clear-cache     Clear the cache before processing.
               -h, --help            Display this help message and exit.
 
             HELP;
     }
 
-    private function preparePaths(): void
+    private function preparePaths(Config $config): Config
     {
-        if ('' === $this->filePath && '' === $this->directoryPath) {
-            exit("Error: Either a file or a directory must be specified.\n");
+        if (!is_dir($this->cachePath) && !mkdir($this->cachePath, 0o775, true)) {
+            echo "Error: Failed to create target directory: {$this->cachePath}\n";
         }
-        if ('' !== $this->filePath) {
-            $this->filePath = rtrim($this->basePath, '/') . '/' . $this->filePath;
-            if (!file_exists($this->filePath)) {
-                exit("File not found: {$this->filePath}\n");
+
+        if (empty($config->basePath) || empty($config->basePath[0])) {
+            exit("Error: Base path must be specified.\n");
+        }
+        foreach ($config->basePath as $basePath) {
+            if (!is_readable($basePath)) {
+                exit("Error: Base path is not readable: {$basePath}\n");
             }
-            if (!is_readable($this->filePath)) {
-                exit("File is not readable: {$this->filePath}\n");
-            }
         }
-        if ('' !== $this->directoryPath) {
-            if (!is_readable($this->directoryPath)) {
-                exit("Directory is not readable: {$this->directoryPath}\n");
-            }
-            $this->directoryPath = rtrim($this->basePath, '/') . '/' . $this->directoryPath;
+        $newTargetPath = ('' === $config->targetPath) ? __DIR__ . '/target/' : rtrim($config->targetPath, '/') . '/';
+        if (!is_writable(dirname($config->targetPath))) {
+            exit("Error: Target directory is not writable: {$config->targetPath}\n");
         }
-        $this->targetPath = ('' === $this->targetPath) ? __DIR__ . '/target/' : rtrim($this->targetPath, '/') . '/';
-        if (!is_writable(dirname($this->targetPath))) {
-            exit("Target directory is not writable: {$this->targetPath}\n");
-        }
+        $modified = $newTargetPath !== $config->targetPath;
+
+        return $modified ? new Config(targetPath: $newTargetPath) : $config;
     }
 
-    private function parseArguments(): void
+    private function parseArguments(Config $config): Config
     {
-        $options = getopt('i:d:b:t:f:hc', ['file:', 'dir:', 'base:', 'target:', 'filter:', 'help', 'clear-cache']);
+        $options = getopt('b:t:f:hc', ['base:', 'target:', 'filter:', 'help', 'clear-cache']);
         if (isset($options['h']) || isset($options['help'])) {
             $this->isHelp = true;
 
-            return;
+            return $config;
         }
         if (isset($options['c']) || isset($options['clear-cache'])) {
             $this->forceUpdate = true;
-
-            return;
-        }
-        $filePath = trim($options['i'] ?? $options['file'] ?? '');
-        if ('' !== $filePath) {
-            $this->filePath = $filePath;
-        }
-        $directoryPath = trim($options['d'] ?? $options['dir'] ?? '');
-        if ('' !== $directoryPath) {
-            $this->directoryPath = $directoryPath;
         }
         $basePath = trim($options['b'] ?? $options['base'] ?? '');
-        if ('' !== $basePath) {
-            $this->basePath = $basePath;
-        }
         $targetPath = trim($options['t'] ?? $options['target'] ?? '');
-        if ('' !== $targetPath) {
-            $this->targetPath = $targetPath;
-        }
         $filter = trim($options['f'] ?? $options['filter'] ?? '', " \t\n\r\0\x0B,");
-        if ('' !== $filter) {
-            $this->classNameFilter = explode(',', $filter);
-        }
+
+        return new Config(
+            '' !== $targetPath ? $targetPath : $config->targetPath,
+            '' !== $basePath ? [$basePath] : $config->basePath,
+            ('' !== $filter) ? explode(',', $filter) : $config->classNameFilter,
+        );
     }
 
-    private function loadConfiguration(): void
+    private function loadConfiguration(): Config
     {
         $configFile = getcwd() . '/.vs-mock-builder.php';
 
         if (file_exists($configFile)) {
             $config = include $configFile;
             if (!is_array($config)) {
-                exit("Invalid configuration file format: {$configFile}\n");
+                exit("Error: Invalid configuration file format: {$configFile}\n");
             }
-            $this->filePath = $config['filePath'] ?? '';
-            $this->directoryPath = $config['directoryPath'] ?? '';
-            $this->basePath = $config['basePath'] ?? '';
-            $this->targetPath = $config['targetPath'] ?? '';
-            $this->classNameFilter = $config['classNameFilter'] ?? [];
-            $this->cacheFileName = $config['cacheFileName'] ?? './.vs-mock-builder.cache';
+            $this->cachePath = rtrim($config['cachePath'] ?? './.mock-builder-cache', '/') . '/';
             if (isset($config['visitors']) && is_array($config['visitors'])) {
                 $this->visitors = array_reverse($config['visitors']);
             }
+            $config['basePath'] ??= [];
+            if (!is_array($config['basePath'])) {
+                $config['basePath'] = [$config['basePath']];
+            }
+            $configTest = $config;
+            unset($configTest['visitors']);
+
+            return new Config(
+                $config['targetPath'] ?? '',
+                $config['basePath'],
+                $config['classNameFilter'] ?? [],
+            );
         }
+
+        return new Config();
     }
 }

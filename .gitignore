@@ -5,3 +5,4 @@ target
 var
 source
 .vs-mock-builder.cache
+.mock-builder-cache

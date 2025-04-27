@@ -4,6 +4,9 @@
 declare(strict_types=1);
 
 use Vasoft\MockBuilder\Application;
+set_time_limit(0);
+@ini_set('implicit_flush', 1);
+ob_implicit_flush();
 
 $autoloadPaths = [
     __DIR__ . '/../../autoload.php',

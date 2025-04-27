@@ -26,26 +26,28 @@ use Vasoft\MockBuilder\Visitor\ModuleVisitor;
  */
 class Builder
 {
-    private readonly string $targetPath;
+    private ?Graph $graph = null;
 
     /**
      * Constructor for the Builder class.
      *
-     * @param string          $targetPath      The target directory for saving transformed files.
-     *                                         If empty, defaults to './target/'.
-     * @param string[]        $classNameFilter Optional list of substrings to filter class names.
-     *                                         Only classes whose names contain at least one of these substrings will be processed.
      * @param ModuleVisitor[] $visitors
      */
     public function __construct(
-        private readonly string $basePath,
-        string $targetPath,
-        private readonly array $classNameFilter,
+        private readonly Config $config,
         private readonly array $visitors = [],
         private readonly bool $forceUpdate = false,
-        private readonly string $cacheFile = '',
-    ) {
-        $this->targetPath = '' === $targetPath ? __DIR__ . '/target/' : rtrim($targetPath, '/') . '/';
+        private readonly string $cachePath = '',
+    ) {}
+
+    public function run(): void
+    {
+        $cacheFile = $this->cachePath . md5(serialize($this->config->basePath)) . '.graph';
+
+        $this->graph = new Graph($this->config->basePath, $cacheFile, $this->forceUpdate);
+        foreach ($this->config->basePath as $basePath) {
+            $this->processDirectory($basePath);
+        }
     }
 
     /**
@@ -53,17 +55,31 @@ class Builder
      *
      * @param string $dirPath the path to the directory containing PHP files to process
      */
-    public function processDirectory(string $dirPath): void
+    protected function processDirectory(string $dirPath): void
     {
+        if ($this->config->displayProgress) {
+            echo 'Processing directory: ', $dirPath, PHP_EOL;
+        }
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dirPath, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST,
         );
+        $traverser = new NodeTraverser();
+        if (!empty($this->visitors)) {
+            foreach ($this->visitors as $visitor) {
+                $visitor
+                    ->setDependenceGraph($this->graph)
+                    ->setConfig($this->config)
+                    ->beforeProcess();
+                $traverser->addVisitor($visitor);
+            }
+        }
+        $traverser->addVisitor(new NameResolver());
 
         foreach ($iterator as $file) {
             if ($file->isFile() && 'php' === strtolower($file->getExtension())) {
                 $filePath = $file->getPathname();
-                $this->processFile($filePath);
+                $this->processFile($filePath, $traverser);
             }
         }
     }
@@ -73,8 +89,11 @@ class Builder
      *
      * @param string $filePath the path to the PHP file to process
      */
-    public function processFile(string $filePath): void
+    protected function processFile(string $filePath, NodeTraverser $traverser): void
     {
+        if ($this->config->displayProgress) {
+            echo 'Processing file: ', $filePath, PHP_EOL;
+        }
         $code = file_get_contents($filePath);
 
         $parser = (new ParserFactory())->createForHostVersion();
@@ -82,21 +101,11 @@ class Builder
         try {
             $ast = $parser->parse($code);
         } catch (\Exception $e) {
-            echo "Error parsing file {$filePath}: " . $e->getMessage() . "\n";
+            echo 'Warning: Error parsing file ', $filePath, ': ' . $e->getMessage() . PHP_EOL;
 
             return;
         }
 
-        $traverser = new NodeTraverser();
-        if (!empty($this->visitors)) {
-            $graph = new Graph($this->basePath, $this->cacheFile, $this->forceUpdate);
-            foreach ($this->visitors as $visitor) {
-                $visitor->setDependenceGraph($graph);
-                $visitor->beforeProcess($this->targetPath, $this->basePath);
-                $traverser->addVisitor($visitor);
-            }
-        }
-        $traverser->addVisitor(new NameResolver());
         $modifiedAst = $traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();
@@ -109,7 +118,7 @@ class Builder
                 if ($node->name instanceof Name) {
                     $namespace = implode('\\', $node->name->getParts());
                 } else {
-                    echo "Unexpected namespace format in file {$filePath}: " . print_r($node->name, true) . "\n";
+                    echo "Warning: Unexpected namespace format in file {$filePath}: " . print_r($node->name, true) . "\n";
 
                     return;
                 }
@@ -132,27 +141,25 @@ class Builder
         }
 
         if (empty($class)) {
-            echo "Class name not found in the file: {$filePath}\n";
+            echo "Warning: Class name not found in the file: {$filePath}\n";
 
             return;
         }
 
         if (empty($namespace)) {
-            echo "Namespace name not found in the file: {$filePath}\n";
+            echo "Warning: Namespace name not found in the file: {$filePath}\n";
 
             return;
         }
 
-        $targetDir = $this->targetPath . str_replace('\\', '/', $namespace);
+        $targetDir = $this->config->targetPath . str_replace('\\', '/', $namespace);
 
         if (!is_dir($targetDir) && !mkdir($targetDir, 0o775, true)) {
-            echo "Failed to create target directory: {$targetDir}\n";
-
-            return;
+            exit("Error: Failed to create target directory: {$targetDir}\n");
         }
         $targetFile = $targetDir . '/' . $class . '.php';
         if (false === file_put_contents($targetFile, $newCode)) {
-            echo "Failed to save transformed file: {$targetFile}\n";
+            exit("Error: Failed to save transformed file: {$targetFile}\n");
         }
     }
 

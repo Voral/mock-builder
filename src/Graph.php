@@ -16,7 +16,7 @@ final class Graph
     private array $classes = [];
 
     public function __construct(
-        private readonly string $basePath,
+        private readonly array $basePaths,
         private readonly string $cacheFile,
         private readonly bool $forceUpdate,
     ) {
@@ -25,7 +25,10 @@ final class Graph
 
             return;
         }
-        $this->collectClassInfo();
+        $this->classes = [];
+        foreach ($this->basePaths as $basePath) {
+            $this->collectClassInfo($basePath);
+        }
         $this->buildDependencyGraph();
         if ('' !== $cacheFile) {
             file_put_contents($this->cacheFile, serialize($this->classes));
@@ -67,13 +70,12 @@ final class Graph
         }
     }
 
-    private function collectClassInfo(): void
+    private function collectClassInfo(string $basePath): void
     {
-        $this->classes = [];
         $parser = (new ParserFactory())->createForHostVersion();
 
         $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($this->basePath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            new \RecursiveDirectoryIterator($basePath, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST,
         );
         foreach ($iterator as $file) {
