@@ -9,3 +9,6 @@
 /.gitattributes export-ignore
 /.vs-version-increment.php export-ignore
 /.gitattributes export-ignore
+/.mock-builder-cache export-ignore
+/doc export-ignore
+/CHANGELOG.md export-ignore

@@ -9,15 +9,37 @@ use PhpParser\NodeVisitorAbstract;
 use Vasoft\MockBuilder\Config;
 use Vasoft\MockBuilder\Graph;
 
+/**
+ * ModuleVisitor is an abstract base class for visitors that modify the Abstract Syntax Tree (AST) during code processing.
+ * It provides common functionality and configuration options for all concrete visitors.
+ */
 abstract class ModuleVisitor extends NodeVisitorAbstract
 {
+    /**
+     * @var Graph|null A graph of class dependencies used for analyzing inheritance and interfaces.
+     */
     protected ?Graph $dependenceGraph = null;
+
+    /**
+     * @var Config|null Configuration object containing settings for the mock builder utility.
+     */
     protected ?Config $config = null;
 
+    /**
+     * Constructor for the ModuleVisitor class.
+     *
+     * @param bool $skipThrowable Whether to skip classes that are instances of Throwable or Exception.
+     */
     public function __construct(
         protected readonly bool $skipThrowable = false,
     ) {}
 
+    /**
+     * Sets the dependency graph for analyzing class relationships.
+     *
+     * @param Graph $dependenciesGraph The dependency graph to use.
+     * @return static Returns the current instance for method chaining.
+     */
     public function setDependenceGraph(Graph $dependenciesGraph): static
     {
         $this->dependenceGraph = $dependenciesGraph;
@@ -25,11 +47,23 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
         return $this;
     }
 
+    /**
+     * Determines whether a given node should be skipped during processing.
+     *
+     * @param mixed $node The AST node to check.
+     * @return bool True if the node should be skipped, false otherwise.
+     */
     protected function needSkip($node): bool
     {
         return $this->skipThrowable && $node instanceof Class_ && $this->isThrowable($node);
     }
 
+    /**
+     * Checks if a class is an instance of Throwable or Exception.
+     *
+     * @param Class_ $class The class node to check.
+     * @return bool True if the class is an instance of Throwable or Exception, false otherwise.
+     */
     private function isThrowable(Class_ $class): bool
     {
         if (null === $this->dependenceGraph || (empty($class->name) && empty($class->namespacedName))) {
@@ -40,8 +74,18 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
         return $this->dependenceGraph->isInstanceOf($className, ['Throwable', 'Exception']);
     }
 
+    /**
+     * Called before processing begins.
+     * This method can be overridden by subclasses to perform preparatory actions.
+     */
     public function beforeProcess(): void {}
 
+    /**
+     * Sets the configuration object for the visitor.
+     *
+     * @param Config $config The configuration object to use.
+     * @return static Returns the current instance for method chaining.
+     */
     public function setConfig(Config $config): static
     {
         $this->config = $config;
