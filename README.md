@@ -111,6 +111,7 @@ The project is distributed under the MIT license. For details, see the [LICENSE]
 ## Frequently Asked Questions (FAQ)
 
 1. [What to Do with Classes in the Global Namespace?](doc/faq.md#what-to-do-with-classes-in-the-global-namespace)
+2. [How to Create Mocks for Functions in the Global Scope?](doc/faq.md#how-to-create-mocks-for-functions-in-the-global-scope)
 
 ---
 

@@ -3,6 +3,7 @@
 ## Table of Contents
 
 1. [What to Do with Classes in the Global Namespace?](#what-to-do-with-classes-in-the-global-namespace)
+2. [How to Create Mocks for Functions in the Global Scope?](#how-to-create-mocks-for-functions-in-the-global-scope)
 
 ---
 
@@ -59,3 +60,104 @@ require_once __DIR__ . '/custom_autoloader.php';
         }
       }
       ```
+
+---
+
+### How to Create Mocks for Functions in the Global Scope?
+
+The utility does not support automatic generation of mocks for functions in the global scope, as PHP does not allow
+redefining functions directly. However, you can manually create mocks for such functions using the generated `MockTools`
+trait. Here is a step-by-step guide:
+
+#### 1. Create a Helper Class for Mocks
+
+Create a class that uses the `MockTools` trait to manage mock behavior. For example:
+
+```php
+namespace App\Mocker;
+
+class GlobalFunctionMock {
+    use MockTools;
+}
+```
+
+#### 2. Create a File with Mocks for Global Functions
+
+Create a separate file (e.g., `test/function_mock.php`) where you define mocks for the required functions. Implement
+each function so that it calls the corresponding method in the helper class. For example:
+
+```php
+function GetMessage(string $messageCode, array $replace = [], $language = null): string {
+    return \App\Mocker\GlobalFunctionMock::executeMocked('GetMessage', [$messageCode, $replace, $language]);
+}
+```
+
+This approach allows you to replace real functions with their mocks while maintaining control over their behavior.
+
+#### 3. Example of a Testable Class
+
+Suppose you have a class that uses the global function `GetMessage`:
+
+```php
+namespace App;
+
+class A {
+    public static function foo(): string {
+        return GetMessage('test1') . GetMessage('test2');
+    }
+}
+```
+
+#### 4. Write a Test
+
+Now you can write a test that configures the behavior of the mock for the `GetMessage` function:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace App;
+
+use App\Mocker\GlobalFunctionMock;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
+final class ATest extends TestCase {
+    public function testFoo(): void {
+        // Configure the mock for the GetMessage function
+        GlobalFunctionMock::cleanMockData('GetMessage', defaultResult: 'test');
+
+        // Call the testable method
+        $result = A::foo();
+
+        // Verify the result
+        self::assertSame('testtest', $result);
+
+        // Verify the number of function calls
+        self::assertSame(2, GlobalFunctionMock::getMockedCounter('GetMessage'));
+
+        // Verify the call parameters
+        $params = GlobalFunctionMock::getMockedParamsAll('GetMessage');
+        self::assertSame('test1', $params[0][0]); // First call with parameter 'test1'
+        self::assertSame('test2', $params[1][0]); // Second call with parameter 'test2'
+    }
+}
+```
+
+#### Notes
+
+1. **Manual Mock Creation**:
+    - The utility cannot automatically handle functions in the global scope, so you need to manually create mocks for
+      such functions.
+    - Ensure that mocks are loaded before the testable code runs (e.g., via autoloading or explicit file inclusion).
+
+2. **Test Isolation**:
+    - Use the `cleanMockData` method to reset the state of mocks before each test to avoid side effects.
+
+3. **Flexible Configuration**:
+    - You can configure mock behavior by specifying predefined results, exceptions, or default values.
