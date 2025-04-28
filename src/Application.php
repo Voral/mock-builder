@@ -99,7 +99,7 @@ class Application
 
     private function parseArguments(Config $config): Config
     {
-        $options = getopt('b:t:f:hc', ['base:', 'target:', 'filter:', 'help', 'clear-cache']);
+        $options = getopt('b:t:f:hcd', ['base:', 'target:', 'filter:', 'help', 'clear-cache', 'display']);
         if (isset($options['h']) || isset($options['help'])) {
             $this->isHelp = true;
 
@@ -116,6 +116,8 @@ class Application
             '' !== $targetPath ? $targetPath : $config->targetPath,
             '' !== $basePath ? [$basePath] : $config->basePath,
             ('' !== $filter) ? explode(',', $filter) : $config->classNameFilter,
+            isset($options['d']) || isset($options['display']),
+            $config->resultTypes,
         );
     }
 
@@ -136,13 +138,14 @@ class Application
             if (!is_array($config['basePath'])) {
                 $config['basePath'] = [$config['basePath']];
             }
-            $configTest = $config;
-            unset($configTest['visitors']);
+
+            $config['resultTypes'] ??= [];
 
             return new Config(
                 $config['targetPath'] ?? '',
                 $config['basePath'],
                 $config['classNameFilter'] ?? [],
+                resultTypes: $config['resultTypes'],
             );
         }
 

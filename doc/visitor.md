@@ -27,7 +27,8 @@ new \Vasoft\MockBuilder\Visitor\PublicAndConstFilter(true);
 ### 2. `SetReturnTypes`
 
 **Purpose:**  
-Adds return types to methods based on PHPDoc comments. If a type is already specified, it remains unchanged.
+Adds return types to methods based on PHPDoc comments or explicitly defined types from the configuration. If a type is
+already specified, it remains unchanged.
 
 **Constructor Parameters:**
 
@@ -36,10 +37,66 @@ Adds return types to methods based on PHPDoc comments. If a type is already spec
 - `$skipThrowable` (bool, optional): If `true`, classes that are descendants of `Throwable` or `Exception` will be
   skipped.
 
+**Key Features:**
+
+1. **PHPDoc Processing:**
+    - Types are determined based on the `@return` tag in PHPDoc comments.
+    - Supports union types (e.g., `string|int`), nullable types (e.g., `?int`), and special types such as `$this` (
+      replaced with `static`) and `void`.
+
+2. **Explicit Types from Configuration:**
+    - You can specify an array `resultTypes` in the configuration, where keys are fully qualified method names (in the
+      format `ClassName::methodName`) and values are their return types.
+    - Explicitly defined types take precedence over types determined via PHPDoc.
+
+3. **PHP Version Compatibility:**
+    - For PHP versions below 8.2, the type `'true'` is replaced with `'bool'`.
+    - Nullable types are handled correctly, whether specified manually or via PHPDoc.
+
 **Example Usage:**
 
 ```php
 new \Vasoft\MockBuilder\Visitor\SetReturnTypes('8.1', true);
+```
+
+**Example Configuration with Explicit Types:**
+
+```php
+return [
+    'basePath' => ['/path/to/source'],
+    'targetPath' => '/path/to/target',
+    'resultTypes' => [
+        '\Vendor\System\MyClass::myMethod' => 'string',
+        '\Vendor\Other\AnotherClass::anotherMethod' => '?int',
+    ],
+];
+```
+
+**Example Source Code:**
+
+```php
+class MyClass
+{
+    /**
+     * @return string|int
+     */
+    public function myMethod()
+    {
+        // No return type or PHPDoc
+    }
+}
+```
+
+**Result:**
+
+```php
+class MyClass
+{
+    public function myMethod(): string|int
+    {
+        // Body cleared
+    }
+}
 ```
 
 ---

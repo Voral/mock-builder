@@ -27,7 +27,8 @@ new \Vasoft\MockBuilder\Visitor\PublicAndConstFilter(true);
 ### 2. `SetReturnTypes`
 
 **Назначение:**  
-Добавляет типы возвращаемых значений к методам на основе PHPDoc-комментариев. Если тип уже указан, он не изменяется.
+Добавляет типы возвращаемых значений к методам на основе PHPDoc-комментариев или явно заданных типов из конфигурации.
+Если тип уже указан, он не изменяется.
 
 **Параметры конструктора:**
 
@@ -36,10 +37,66 @@ new \Vasoft\MockBuilder\Visitor\PublicAndConstFilter(true);
 - `$skipThrowable` (bool, необязательный): Если `true`, классы, являющиеся потомками `Throwable` или `Exception`, будут
   пропущены.
 
+**Особенности работы:**
+
+1. **Обработка PHPDoc:**
+    - Типы определяются на основе тега `@return` в PHPDoc-комментариях.
+    - Поддерживаются объединённые типы (например, `string|int`), nullable-типы (например, `?int`) и специальные типы,
+      такие как `$this` (заменяется на `static`) и `void`.
+
+2. **Явные типы из конфигурации:**
+    - В конфигурации можно указать массив `resultTypes`, где ключами являются полные имена методов (в
+      формате `ClassName::methodName`), а значениями — их возвращаемые типы.
+    - Явно заданные типы имеют приоритет над типами, определёнными через PHPDoc.
+
+3. **Совместимость с версиями PHP:**
+    - Для версий PHP ниже 8.2 тип `'true'` заменяется на `'bool'`.
+    - Nullable-типы обрабатываются корректно, даже если они указаны вручную или через PHPDoc.
+
 **Пример использования:**
 
 ```php
 new \Vasoft\MockBuilder\Visitor\SetReturnTypes('8.1', true);
+```
+
+**Пример конфигурации с явными типами:**
+
+```php
+return [
+    'basePath' => ['/path/to/source'],
+    'targetPath' => '/path/to/target',
+    'resultTypes' => [
+        '\Vendor\System\MyClass::myMethod' => 'string',
+        '\Vendor\Other\AnotherClass::anotherMethod' => '?int',
+    ],
+];
+```
+
+**Пример исходного кода:**
+
+```php
+class MyClass
+{
+    /**
+     * @return string|int
+     */
+    public function myMethod()
+    {
+        // No return type or PHPDoc
+    }
+}
+```
+
+**Результат:**
+
+```php
+class MyClass
+{
+    public function myMethod(): string|int
+    {
+        // Body cleared
+    }
+}
 ```
 
 ---

@@ -42,13 +42,17 @@ class SetReturnTypes extends ModuleVisitor
      */
     public function leaveNode(Node $node): null|array|int|Node
     {
+        $className = $node->name->name ?? '';
+        if (isset($node->namespacedName)) {
+            $className = $node->namespacedName->toString();
+        }
         if ($node instanceof Class_ || $node instanceof Trait_) {
             if (!isset($node->stmts)) {
                 return null;
             }
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
-                    $this->addReturnType($method);
+                    $this->addReturnType($method, $className);
                 }
             }
             $node->stmts = array_values($node->stmts);
@@ -57,9 +61,16 @@ class SetReturnTypes extends ModuleVisitor
         return null;
     }
 
-    private function addReturnType(ClassMethod $method): void
+    private function addReturnType(ClassMethod $method, string $className): void
     {
         if ($method->returnType) {
+            return;
+        }
+
+        $methodName = $className . '::' . $method->name->name;
+        if (!empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
+            $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
+
             return;
         }
 
