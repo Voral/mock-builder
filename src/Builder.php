@@ -151,9 +151,7 @@ class Builder
         }
 
         if (empty($namespace)) {
-            echo "Warning: Namespace name not found in the file: {$filePath}\n";
-
-            return;
+            echo "Info: Class '{$class}' is in the global namespace. File: {$filePath}\n";
         }
 
         $targetDir = $this->config->targetPath . str_replace('\\', '/', $namespace);

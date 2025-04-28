@@ -5,7 +5,7 @@
 
 ### Fixes
 - improve class name filtering in Builder. Method to support fully qualified class names.
-- correct class name filtering in Builder
+
 
 # 0.3.0 (2025-04-28)
 
