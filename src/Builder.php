@@ -13,6 +13,7 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
+use PHPStan\PhpDocParser\Ast\Node;
 use Vasoft\MockBuilder\Visitor\ModuleVisitor;
 
 /**
@@ -118,13 +119,16 @@ class Builder
                 if ($node->name instanceof Name) {
                     $namespace = implode('\\', $node->name->getParts());
                 } else {
-                    echo "Warning: Unexpected namespace format in file {$filePath}: " . print_r($node->name, true) . "\n";
+                    echo "Warning: Unexpected namespace format in file {$filePath}: " . print_r(
+                        $node->name,
+                        true,
+                    ) . "\n";
 
                     return;
                 }
                 foreach ($node->stmts as $stmt) {
                     if (isset($stmt->name->name) && $this->neededNode($stmt)) {
-                        if (!$this->matchesFilter($stmt->name->name)) {
+                        if (!$this->matchesFilter($stmt)) {
                             return;
                         }
                         $class = $stmt->name->name;
@@ -132,7 +136,7 @@ class Builder
                     }
                 }
             } elseif (isset($node->name->name) && $this->neededNode($node)) {
-                if (!$this->matchesFilter($node->name->name)) {
+                if (!$this->matchesFilter($node)) {
                     return;
                 }
                 $class = $node->name->name;
@@ -168,8 +172,12 @@ class Builder
         return $item instanceof Class_ || $item instanceof Interface_ || $item instanceof Trait_;
     }
 
-    private function matchesFilter(string $className): bool
+    private function matchesFilter(Node|\PhpParser\Node $node): bool
     {
+        $className = $node->name->name ?? '';
+        if (isset($node->namespacedName)) {
+            $className = $node->namespacedName->toString();
+        }
         if (empty($this->config->classNameFilter)) {
             return true;
         }
