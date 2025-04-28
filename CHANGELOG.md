@@ -1,3 +1,17 @@
+# 0.3.0 (2025-04-28)
+
+### New features
+- add support for customizable base namespace and autonomous trait handling
+- add dependency graph for accurate class hierarchy analysis
+
+### Fixes
+- correct handling of mixed type in return types
+
+### Refactoring
+- introduce Config class and streamline configuration handling
+- introduce ModuleVisitor for centralized skip logic
+- modularize AST processing with Visitor pattern and add PHP version support
+
 # 0.2.0 (2025-04-24)
 
 ### New features
