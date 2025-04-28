@@ -1,3 +1,12 @@
+# 0.5.0 (2025-04-28)
+
+### New features
+- add support for mocking echo outputs in MockTools
+- remove mandatory namespace requirement for processed classes
+
+### Documentation
+- add guide for mocking global functions
+
 # 0.4.0 (2025-04-28)
 
 ### New features
