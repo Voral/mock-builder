@@ -170,10 +170,10 @@ class Builder
 
     private function matchesFilter(string $className): bool
     {
-        if (empty($this->classNameFilter)) {
+        if (empty($this->config->classNameFilter)) {
             return true;
         }
-        foreach ($this->classNameFilter as $filter) {
+        foreach ($this->config->classNameFilter as $filter) {
             if (false !== stripos($className, $filter)) {
                 return true;
             }
