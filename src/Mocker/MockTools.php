@@ -41,6 +41,11 @@ trait MockTools
     private static array $mockNamedMode = [];
 
     /**
+     * @var array Stores predefined outputs (e.g., echo statements) for mocked methods.
+     */
+    private static array $mockOutputs = [];
+
+    /**
      * Resets and configures mock data for a specific method.
      *
      * @param string $methodName The name of the method to configure.
@@ -48,6 +53,7 @@ trait MockTools
      * @param array $exceptions A list of exceptions to throw on specific calls.
      * @param mixed $defaultResult The default result to return when no predefined results are available.
      * @param bool $namedMode Whether to use named mode (parameter-based indexing) for mock behavior.
+     * @param array $outputs A list of predefined outputs (e.g., echo statements) for the mocked method.
      */
     public static function cleanMockData(
         string $methodName,
@@ -55,6 +61,7 @@ trait MockTools
         array $exceptions = [],
         mixed $defaultResult = null,
         bool $namedMode = false,
+        array $outputs = []
     ): void {
         self::$mockCounter[$methodName] = 0;
         self::$mockResults[$methodName] = $results;
@@ -62,6 +69,7 @@ trait MockTools
         self::$mockExceptions[$methodName] = $exceptions;
         self::$mockDefaultResults[$methodName] = $defaultResult;
         self::$mockNamedMode[$methodName] = $namedMode;
+        self::$mockOutputs[$methodName] = $outputs;
     }
 
     /**
@@ -87,7 +95,7 @@ trait MockTools
      * @return mixed The result of the mocked method, either predefined or default.
      * @throws \Throwable If an exception is configured for the current call.
      */
-    private static function executeMocked(string $methodName, array $params): mixed
+    public static function executeMocked(string $methodName, array $params): mixed
     {
         $index = self::$mockNamedMode[$methodName] ? self::paramHash($params) : self::$mockCounter[$methodName];
         ++self::$mockCounter[$methodName];
@@ -95,6 +103,10 @@ trait MockTools
         self::$mockParams[$methodName][$index] = $params;
         if (isset(self::$mockExceptions[$methodName][$index])) {
             throw new self::$mockExceptions[$methodName][$index]();
+        }
+
+        if (!empty(self::$mockOutputs[$methodName][$index])) {
+            echo self::$mockOutputs[$methodName][$index];
         }
 
         return self::$mockResults[$methodName][$index] ?? self::$mockDefaultResults[$methodName] ?? null;
