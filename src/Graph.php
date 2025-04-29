@@ -10,6 +10,8 @@ use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
+use Vasoft\MockBuilder\Informer\EntityData;
+use Vasoft\MockBuilder\Informer\EntityType;
 
 final class Graph
 {
@@ -21,7 +23,10 @@ final class Graph
         private readonly bool $forceUpdate,
     ) {
         if ('' !== $cacheFile && !$this->forceUpdate && file_exists($this->cacheFile)) {
-            $this->classes = unserialize(file_get_contents($this->cacheFile));
+            $this->classes = unserialize(
+                file_get_contents($this->cacheFile),
+                ['allowed_classes' => [EntityData::class, EntityType::class]],
+            );
 
             return;
         }
@@ -44,13 +49,13 @@ final class Graph
         $info = $this->classes[$itemName];
         $classNames = array_map(static fn($className) => ltrim($className, '\\'), $classNames);
 
-        foreach ($info['interfaces'] as $interface) {
+        foreach ($info->interfaces as $interface) {
             if (in_array($interface, $classNames, true)) {
                 return true;
             }
         }
 
-        foreach ($info['parents'] as $parentClassName) {
+        foreach ($info->parents as $parentClassName) {
             if (in_array($parentClassName, $classNames, true) || $this->isInstanceOf($parentClassName, $classNames)) {
                 return true;
             }
@@ -62,9 +67,9 @@ final class Graph
     public function buildDependencyGraph(): void
     {
         foreach ($this->classes as $className => $info) {
-            foreach ($info['parents'] as $parentClassName) {
+            foreach ($info->parents as $parentClassName) {
                 if (isset($this->classes[$parentClassName])) {
-                    $this->classes[$parentClassName]['children'][] = $className;
+                    $this->classes[$parentClassName]->children[] = $className;
                 }
             }
         }
@@ -118,12 +123,19 @@ final class Graph
             $interfaceName = $node->namespacedName?->toString() ?? $node->name->toString();
             $parentInterfaces = array_map(static fn($interface) => $interface->toString(), $node->extends);
 
-            $this->classes[$interfaceName] = [
-                'type' => 'interface',
-                'parents' => $parentInterfaces,
-                'fileName' => $fileName,
-                'children' => [],
-            ];
+            $this->classes[$interfaceName] = new EntityData(
+                EntityType::IS_INTERFACE,
+                $interfaceName,
+                $fileName,
+                parents: $parentInterfaces,
+            );
+
+            //            $this->classes[$interfaceName] = [
+            //                'type' => 'interface',
+            //                'parents' => $parentInterfaces,
+            //                'fileName' => $fileName,
+            //                'children' => [],
+            //            ];
 
             return true;
         }
@@ -137,13 +149,20 @@ final class Graph
             $className = $node->namespacedName?->toString() ?? $node->name->toString();
             $parentClass = $node->extends?->toString();
             $interfaces = array_map(static fn($interface) => $interface->toString(), $node->implements);
-            $this->classes[$className] = [
-                'type' => 'class',
-                'parents' => empty($parentClass) ? [] : [$parentClass],
-                'interfaces' => $interfaces,
-                'fileName' => $fileName,
-                'children' => [],
-            ];
+            //            $this->classes[$className] = [
+            //                'type' => 'class',
+            //                'parents' => empty($parentClass) ? [] : [$parentClass],
+            //                'interfaces' => $interfaces,
+            //                'fileName' => $fileName,
+            //                'children' => [],
+
+            $this->classes[$className] = new EntityData(
+                EntityType::IS_CLASS,
+                $className,
+                $fileName,
+                $interfaces,
+                empty($parentClass) ? [] : [$parentClass],
+            );
 
             return true;
         }
@@ -167,11 +186,9 @@ final class Graph
 
             $visiting[$className] = true;
 
-            if (isset($this->classes[$className]['parents'])) {
-                foreach ($this->classes[$className]['parents'] as $parent) {
-                    if (isset($this->classes[$parent])) {
-                        $visit($parent);
-                    }
+            foreach ($this->classes[$className]->parents as $parent) {
+                if (isset($this->classes[$parent])) {
+                    $visit($parent);
                 }
             }
 
@@ -181,13 +198,13 @@ final class Graph
         };
 
         foreach ($this->classes as $className => $info) {
-            if ('interface' === $info['type']) {
+            if (EntityType::IS_INTERFACE === $info->type) {
                 $visit($className);
             }
         }
 
         foreach ($this->classes as $className => $info) {
-            if ('class' === $info['type']) {
+            if (EntityType::IS_CLASS === $info->type) {
                 $visit($className);
             }
         }
@@ -200,7 +217,7 @@ final class Graph
         $sorted = $this->topologicalSort();
         foreach ($sorted as $className) {
             if (isset($this->classes[$className])) {
-                $callback($this->classes[$className]['fileName']);
+                $callback($this->classes[$className]->filePath);
             }
         }
     }
