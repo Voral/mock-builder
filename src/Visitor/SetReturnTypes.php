@@ -82,7 +82,7 @@ class SetReturnTypes extends ModuleVisitor
                 $returnTag = $docBlock->getTagsByName('return');
                 if (!empty($returnTag)) {
                     $type = $returnTag[0]->getType();
-                    $typeName = (string) $type;
+                    $typeName = trim((string) $type);
 
                     $parts = array_map('trim', explode('|', $typeName));
                     if (count($parts) > 1 && in_array('mixed', $parts, true)) {
@@ -109,7 +109,7 @@ class SetReturnTypes extends ModuleVisitor
 
                         return;
                     }
-                    if ('void' === $typeName) {
+                    if ('void' === $typeName || 'null' === $typeName) {
                         $method->returnType = new Identifier('void');
 
                         return;
