@@ -1,3 +1,8 @@
+# 0.5.2 (2025-04-29)
+
+### Fixes
+- handle `null` as `void` in return type processing
+
 # 0.5.1 (2025-04-29)
 
 ### Fixes
