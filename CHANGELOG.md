@@ -1,3 +1,15 @@
+# 0.6.0 (2025-04-29)
+
+### New features
+- implement inheritance of return types for methods
+- add support for traits in dependency graph
+
+### Fixes
+- process files in topological order using Graph traversal
+
+### Refactoring
+- add EntityData class to represent class/interface information
+
 # 0.5.2 (2025-04-29)
 
 ### Fixes
