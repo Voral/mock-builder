@@ -1,3 +1,8 @@
+# 0.5.1 (2025-04-29)
+
+### Fixes
+- correct handling of array types in return type processing
+
 # 0.5.0 (2025-04-28)
 
 ### New features
