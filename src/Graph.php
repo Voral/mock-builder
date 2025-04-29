@@ -16,7 +16,8 @@ use Vasoft\MockBuilder\Informer\EntityType;
 
 final class Graph
 {
-    private array $classes = [];
+    /** @var EntityData[] */
+    private array $classes;
 
     public function __construct(
         private readonly array $basePaths,
@@ -229,5 +230,10 @@ final class Graph
                 $callback($this->classes[$className]->filePath);
             }
         }
+    }
+
+    public function getEntityData(string $name): ?EntityData
+    {
+        return $this->classes[$name] ?? null;
     }
 }

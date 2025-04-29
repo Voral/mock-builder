@@ -50,9 +50,26 @@ class SetReturnTypes extends ModuleVisitor
             if (!isset($node->stmts)) {
                 return null;
             }
+
+            $data = $this->dependenceGraph->getEntityData($className);
+
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
-                    $this->addReturnType($method, $className);
+                    $methodName = $className . '::' . $method->name->name;
+                    if (!$method->returnType) {
+                        if (!empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
+                            $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
+                        } elseif (null !== $data) {
+                            $method->returnType = $data->getMethodReturnTypeRecursively(
+                                $method->name->name,
+                                $this->dependenceGraph,
+                            );
+                        }
+                    }
+                    if (!$method->returnType) {
+                        $this->addReturnType($method, $className);
+                    }
+                    $data?->setMethodReturnType($method->name->name, $method->returnType);
                 }
             }
             $node->stmts = array_values($node->stmts);
@@ -63,17 +80,6 @@ class SetReturnTypes extends ModuleVisitor
 
     private function addReturnType(ClassMethod $method, string $className): void
     {
-        if ($method->returnType) {
-            return;
-        }
-
-        $methodName = $className . '::' . $method->name->name;
-        if (!empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
-            $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
-
-            return;
-        }
-
         $docComment = $method->getDocComment();
         if ($docComment) {
             try {
