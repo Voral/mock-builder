@@ -16,19 +16,19 @@ use Vasoft\MockBuilder\Graph;
 abstract class ModuleVisitor extends NodeVisitorAbstract
 {
     /**
-     * @var Graph|null A graph of class dependencies used for analyzing inheritance and interfaces.
+     * @var null|Graph a graph of class dependencies used for analyzing inheritance and interfaces
      */
     protected ?Graph $dependenceGraph = null;
 
     /**
-     * @var Config|null Configuration object containing settings for the mock builder utility.
+     * @var null|Config configuration object containing settings for the mock builder utility
      */
     protected ?Config $config = null;
 
     /**
      * Constructor for the ModuleVisitor class.
      *
-     * @param bool $skipThrowable Whether to skip classes that are instances of Throwable or Exception.
+     * @param bool $skipThrowable whether to skip classes that are instances of Throwable or Exception
      */
     public function __construct(
         protected readonly bool $skipThrowable = false,
@@ -37,8 +37,9 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
     /**
      * Sets the dependency graph for analyzing class relationships.
      *
-     * @param Graph $dependenciesGraph The dependency graph to use.
-     * @return static Returns the current instance for method chaining.
+     * @param Graph $dependenciesGraph the dependency graph to use
+     *
+     * @return static returns the current instance for method chaining
      */
     public function setDependenceGraph(Graph $dependenciesGraph): static
     {
@@ -50,8 +51,9 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
     /**
      * Determines whether a given node should be skipped during processing.
      *
-     * @param mixed $node The AST node to check.
-     * @return bool True if the node should be skipped, false otherwise.
+     * @param mixed $node the AST node to check
+     *
+     * @return bool true if the node should be skipped, false otherwise
      */
     protected function needSkip($node): bool
     {
@@ -61,8 +63,9 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
     /**
      * Checks if a class is an instance of Throwable or Exception.
      *
-     * @param Class_ $class The class node to check.
-     * @return bool True if the class is an instance of Throwable or Exception, false otherwise.
+     * @param Class_ $class the class node to check
+     *
+     * @return bool true if the class is an instance of Throwable or Exception, false otherwise
      */
     private function isThrowable(Class_ $class): bool
     {
@@ -83,8 +86,9 @@ abstract class ModuleVisitor extends NodeVisitorAbstract
     /**
      * Sets the configuration object for the visitor.
      *
-     * @param Config $config The configuration object to use.
-     * @return static Returns the current instance for method chaining.
+     * @param Config $config the configuration object to use
+     *
+     * @return static returns the current instance for method chaining
      */
     public function setConfig(Config $config): static
     {

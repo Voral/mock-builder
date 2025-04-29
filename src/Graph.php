@@ -150,4 +150,58 @@ final class Graph
 
         return false;
     }
+
+    private function topologicalSort(): array
+    {
+        $sorted = [];
+        $visited = [];
+        $visiting = [];
+
+        $visit = function ($className) use (&$visit, &$sorted, &$visited, &$visiting): void {
+            if (isset($visited[$className])) {
+                return;
+            }
+            if (isset($visiting[$className])) {
+                throw new \LogicException("Circular dependency detected involving {$className}");
+            }
+
+            $visiting[$className] = true;
+
+            if (isset($this->classes[$className]['parents'])) {
+                foreach ($this->classes[$className]['parents'] as $parent) {
+                    if (isset($this->classes[$parent])) {
+                        $visit($parent);
+                    }
+                }
+            }
+
+            unset($visiting[$className]);
+            $visited[$className] = true;
+            $sorted[] = $className;
+        };
+
+        foreach ($this->classes as $className => $info) {
+            if ('interface' === $info['type']) {
+                $visit($className);
+            }
+        }
+
+        foreach ($this->classes as $className => $info) {
+            if ('class' === $info['type']) {
+                $visit($className);
+            }
+        }
+
+        return $sorted;
+    }
+
+    public function traverse(callable $callback): void
+    {
+        $sorted = $this->topologicalSort();
+        foreach ($sorted as $className) {
+            if (isset($this->classes[$className])) {
+                $callback($this->classes[$className]['fileName']);
+            }
+        }
+    }
 }

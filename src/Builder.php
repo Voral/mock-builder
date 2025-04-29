@@ -27,7 +27,8 @@ use Vasoft\MockBuilder\Visitor\ModuleVisitor;
  */
 class Builder
 {
-    private ?Graph $graph = null;
+    private Graph $graph;
+    private NodeTraverser $traverser;
 
     /**
      * Constructor for the Builder class.
@@ -39,50 +40,25 @@ class Builder
         private readonly array $visitors = [],
         private readonly bool $forceUpdate = false,
         private readonly string $cachePath = '',
-    ) {}
-
-    public function run(): void
-    {
+    ) {
         $cacheFile = $this->cachePath . md5(serialize($this->config->basePath)) . '.graph';
-
         $this->graph = new Graph($this->config->basePath, $cacheFile, $this->forceUpdate);
-        foreach ($this->config->basePath as $basePath) {
-            $this->processDirectory($basePath);
-        }
-    }
-
-    /**
-     * Processes all PHP files in a directory recursively.
-     *
-     * @param string $dirPath the path to the directory containing PHP files to process
-     */
-    protected function processDirectory(string $dirPath): void
-    {
-        if ($this->config->displayProgress) {
-            echo 'Processing directory: ', $dirPath, PHP_EOL;
-        }
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dirPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST,
-        );
-        $traverser = new NodeTraverser();
+        $this->traverser = new NodeTraverser();
         if (!empty($this->visitors)) {
             foreach ($this->visitors as $visitor) {
                 $visitor
                     ->setDependenceGraph($this->graph)
                     ->setConfig($this->config)
                     ->beforeProcess();
-                $traverser->addVisitor($visitor);
+                $this->traverser->addVisitor($visitor);
             }
         }
-        $traverser->addVisitor(new NameResolver());
+        $this->traverser->addVisitor(new NameResolver());
+    }
 
-        foreach ($iterator as $file) {
-            if ($file->isFile() && 'php' === strtolower($file->getExtension())) {
-                $filePath = $file->getPathname();
-                $this->processFile($filePath, $traverser);
-            }
-        }
+    public function run(): void
+    {
+        $this->graph->traverse($this->processFile(...));
     }
 
     /**
@@ -90,7 +66,7 @@ class Builder
      *
      * @param string $filePath the path to the PHP file to process
      */
-    protected function processFile(string $filePath, NodeTraverser $traverser): void
+    protected function processFile(string $filePath): void
     {
         if ($this->config->displayProgress) {
             echo 'Processing file: ', $filePath, PHP_EOL;
@@ -107,7 +83,7 @@ class Builder
             return;
         }
 
-        $modifiedAst = $traverser->traverse($ast);
+        $modifiedAst = $this->traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();
         $newCode = $printer->prettyPrintFile($modifiedAst);
