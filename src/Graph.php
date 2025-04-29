@@ -7,6 +7,7 @@ namespace Vasoft\MockBuilder;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\Node\Stmt\Trait_;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
@@ -113,7 +114,9 @@ final class Graph
 
                 continue;
             }
-            $this->prepareClass($node, $fileName) || $this->prepareInterface($node, $fileName);
+            $this->prepareClass($node, $fileName)
+            || $this->prepareInterface($node, $fileName)
+            || $this->prepareTrait($node, $fileName);
         }
     }
 
@@ -130,13 +133,6 @@ final class Graph
                 parents: $parentInterfaces,
             );
 
-            //            $this->classes[$interfaceName] = [
-            //                'type' => 'interface',
-            //                'parents' => $parentInterfaces,
-            //                'fileName' => $fileName,
-            //                'children' => [],
-            //            ];
-
             return true;
         }
 
@@ -149,12 +145,6 @@ final class Graph
             $className = $node->namespacedName?->toString() ?? $node->name->toString();
             $parentClass = $node->extends?->toString();
             $interfaces = array_map(static fn($interface) => $interface->toString(), $node->implements);
-            //            $this->classes[$className] = [
-            //                'type' => 'class',
-            //                'parents' => empty($parentClass) ? [] : [$parentClass],
-            //                'interfaces' => $interfaces,
-            //                'fileName' => $fileName,
-            //                'children' => [],
 
             $this->classes[$className] = new EntityData(
                 EntityType::IS_CLASS,
@@ -163,6 +153,19 @@ final class Graph
                 $interfaces,
                 empty($parentClass) ? [] : [$parentClass],
             );
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function prepareTrait($node, string $fileName): bool
+    {
+        if ($node instanceof Trait_) {
+            $name = $node->namespacedName?->toString() ?? $node->name->toString();
+
+            $this->classes[$name] = new EntityData(EntityType::IS_TRAIT, $name, $fileName);
 
             return true;
         }
@@ -199,6 +202,12 @@ final class Graph
 
         foreach ($this->classes as $className => $info) {
             if (EntityType::IS_INTERFACE === $info->type) {
+                $visit($className);
+            }
+        }
+
+        foreach ($this->classes as $className => $info) {
+            if (EntityType::IS_TRAIT === $info->type) {
                 $visit($className);
             }
         }
