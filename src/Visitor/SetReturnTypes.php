@@ -87,7 +87,19 @@ class SetReturnTypes extends ModuleVisitor
                     $parts = array_map('trim', explode('|', $typeName));
                     if (count($parts) > 1 && in_array('mixed', $parts, true)) {
                         $typeName = 'mixed';
+                    } else {
+                        foreach ($parts as &$part) {
+                            $part = trim($part);
+                            if ('callback' === $part) {
+                                $part = 'callable';
+                            } elseif (str_ends_with($part, '[]')) {
+                                $part = 'array';
+                            }
+                        }
+                        $parts = array_unique($parts);
+                        $typeName = implode('|', $parts);
                     }
+
                     if ('true' === $typeName && version_compare($this->targetPhpVersion, '8.2.0', '<')) {
                         $typeName = 'bool';
                     }
