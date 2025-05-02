@@ -1,3 +1,8 @@
+# 0.7.1 (2025-05-02)
+
+### Fixes
+- correct file copying logic for mock tools
+
 # 0.7.0 (2025-05-02)
 
 ### New features
