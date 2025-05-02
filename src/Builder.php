@@ -15,6 +15,9 @@ use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
 use PHPStan\PhpDocParser\Ast\Node;
 use Vasoft\MockBuilder\Visitor\ModuleVisitor;
+use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\Stmt\Nop;
+use PhpParser\Node\Stmt\UseUse;
 
 /**
  * The Builder class is responsible for processing PHP files and directories to generate mock classes.
@@ -91,23 +94,44 @@ class Builder
             return;
         }
 
+        // Step 1: Collect all use statements from the global scope or namespaces
+        $globalUseStatements = [];
+        $namespaceUseStatements = [];
+        foreach ($ast as $node) {
+            if ($node instanceof Use_) {
+                // Collect use statements in the global scope
+                foreach ($node->uses as $use) {
+                    $globalUseStatements[] = new Use_(
+                        [new UseUse(new Name($use->name->toString()))],
+                    );
+                }
+            } elseif ($node instanceof Namespace_) {
+                // Collect use statements inside namespaces
+                foreach ($node->stmts as $stmt) {
+                    if ($stmt instanceof Use_) {
+                        foreach ($stmt->uses as $use) {
+                            $namespaceUseStatements[$node->name->toString()][] = new Use_(
+                                [new UseUse(new Name($use->name->toString()))],
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         $modifiedAst = $this->traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();
 
         foreach ($modifiedAst as $node) {
             if ($node instanceof Namespace_) {
-                $namespace = '';
-                if ($node->name instanceof Name) {
-                    $namespace = implode('\\', $node->name->getParts());
-                } else {
-                    echo "Warning: Unexpected namespace format in file {$filePath}: " . print_r(
-                        $node->name,
-                        true,
-                    ) . "\n";
-
-                    continue;
+                // Check if namespace name exists
+                $namespaceName = $node->name ? $node->name->toString() : null;
+                if ($namespaceName && !empty($namespaceUseStatements[$namespaceName])) {
+                    $node->stmts = array_merge($namespaceUseStatements[$namespaceName], [new Nop()], $node->stmts);
                 }
+
+                $namespace = $node->name ? implode('\\', $node->name->getParts()) : '';
 
                 foreach ($node->stmts as $stmt) {
                     if ($this->neededNode($stmt)) {
@@ -121,7 +145,16 @@ class Builder
                             [$stmt], // Include only the current class/interface/trait
                         );
 
-                        $classCode = $printer->prettyPrintFile([$newNamespace]);
+                        // Add collected use statements to the new namespace
+                        if ($namespaceName && !empty($namespaceUseStatements[$namespaceName])) {
+                            $newNamespace->stmts = array_merge(
+                                $namespaceUseStatements[$namespaceName],
+                                [new Nop()],
+                                $newNamespace->stmts,
+                            );
+                        }
+
+                        $classCode = $printer->prettyPrint([$newNamespace]);
                         $this->saveClassToFile($stmt, $namespace, $classCode, $filePath);
                     }
                 }
@@ -130,8 +163,10 @@ class Builder
                     continue;
                 }
 
-                // Create a new AST for global classes
-                $classCode = $printer->prettyPrintFile([$node]);
+                // Add global use statements for classes in the global scope
+                $classCode = $printer->prettyPrint(
+                    array_merge($globalUseStatements, [new Nop()], [$node]),
+                );
                 $this->saveClassToFile($node, '', $classCode, $filePath);
             }
         }
@@ -162,7 +197,8 @@ class Builder
         }
 
         $targetFile = $targetDir . '/' . $class . '.php';
-        if (false === file_put_contents($targetFile, $classCode)) {
+
+        if (false === file_put_contents($targetFile, "<?php\n\n" . $classCode)) {
             exit("Error: Failed to save transformed file: {$targetFile}\n");
         }
     }

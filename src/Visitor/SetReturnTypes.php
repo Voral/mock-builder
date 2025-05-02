@@ -44,7 +44,7 @@ class SetReturnTypes extends ModuleVisitor
             }
         }
 
-        return null;
+        return $node;
     }
 
     private function addImport(UseUse $use): void
