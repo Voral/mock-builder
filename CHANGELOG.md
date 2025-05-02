@@ -1,3 +1,8 @@
+# 0.7.2 (2025-05-02)
+
+### Fixes
+- properly handle `use` statements for global and namespaced classes
+
 # 0.7.1 (2025-05-02)
 
 ### Fixes
