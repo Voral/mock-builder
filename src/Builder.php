@@ -27,6 +27,7 @@ use Vasoft\MockBuilder\Visitor\ModuleVisitor;
  */
 class Builder
 {
+    private array $processedFiles = [];
     private Graph $graph;
     private NodeTraverser $traverser;
 
@@ -58,6 +59,7 @@ class Builder
 
     public function run(): void
     {
+        $this->processedFiles = [];
         $this->graph->traverse($this->processFile(...));
     }
 
@@ -68,6 +70,10 @@ class Builder
      */
     protected function processFile(string $filePath): void
     {
+        if (array_key_exists($filePath, $this->processedFiles)) {
+            return;
+        }
+        $this->processedFiles[$filePath] = true;
         if ($this->config->displayProgress) {
             echo 'Processing file: ', $filePath, PHP_EOL;
         }
