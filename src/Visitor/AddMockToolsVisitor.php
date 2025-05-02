@@ -32,20 +32,24 @@ class AddMockToolsVisitor extends ModuleVisitor
         }
 
         $traitTargetDir = $this->config->targetPath . '/' . str_replace('\\', '/', $this->baseNamespace) . '/Mocker';
-        $traitTargetFile = $traitTargetDir . '/MockTools.php';
 
         if (!is_dir($traitTargetDir)) {
             mkdir($traitTargetDir, 0o775, true);
         }
+        $this->copyMockTools($traitTargetDir . '/MockTools.php');
+        $this->copyMockTools($traitTargetDir . '/MockDefinition.php');
+    }
 
-        if (!file_exists($traitTargetFile)) {
+    private function copyMockTools(string $targetFile): void
+    {
+        if (!file_exists($targetFile)) {
             $content = file_get_contents(__DIR__ . '/../Mocker/MockTools.php');
             $content = str_replace(
                 'namespace Vasoft\MockBuilder\Mocker;',
                 'namespace ' . $this->baseNamespace . '\Mocker;',
                 $content,
             );
-            file_put_contents($traitTargetFile, $content);
+            file_put_contents($targetFile, $content);
         }
     }
 

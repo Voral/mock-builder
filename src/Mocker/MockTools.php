@@ -6,90 +6,150 @@ namespace Vasoft\MockBuilder\Mocker;
 
 /**
  * MockTools is a trait that provides tools for controlling the behavior of mocked methods during testing.
- * It allows setting return values, throwing exceptions, and tracking method calls.
+ *
+ * It allows setting return values, throwing exceptions, and tracking method calls. This trait is designed to be used
+ * in classes that need to mock methods dynamically during testing.
  */
 trait MockTools
 {
     /**
-     * @var array tracks the number of calls for each mocked method
+     * @var array Tracks the number of calls for each mocked method.
+     *            Keys are method names, and values are the call counts.
      */
     private static array $mockCounter = [];
 
     /**
-     * @var array stores predefined results for mocked methods
+     * @var MockDefinition[] Default mock definitions for methods.
+     *                       Keys are method names, and values are instances of MockDefinition.
      */
-    private static array $mockResults = [];
+    private static array $mockDefault = [];
 
     /**
-     * @var array stores parameters passed to mocked methods during calls
-     */
-    private static array $mockParams = [];
-
-    /**
-     * @var array stores exceptions to be thrown by mocked methods
-     */
-    private static array $mockExceptions = [];
-
-    /**
-     * @var array stores default return values for mocked methods
-     */
-    private static array $mockDefaultResults = [];
-
-    /**
-     * @var array indicates whether named mode is enabled for mocked methods
+     * @var bool[] Indicates whether named mode is enabled for mocked methods.
+     *             Keys are method names, and values are booleans.
      */
     private static array $mockNamedMode = [];
 
     /**
-     * @var array Stores predefined outputs (e.g., echo statements) for mocked methods.
+     * @var array Stores all parameters passed to mocked methods across all calls.
+     *            Keys are method names, and values are associative arrays where keys are indices (numeric or hash)
+     *            and values are parameter sets.
      */
-    private static array $mockOutputs = [];
+    private static array $mockParams = [];
+
+    /**
+     * @var MockDefinition[][] Stores predefined mock definitions for methods.
+     *                         Keys are method names, and values are arrays of MockDefinition objects.
+     */
+    private static array $mockDefinitions = [];
+
+    /**
+     * @var array Caches reflection data for method parameters.
+     *            Keys are method names, and values are arrays of default parameter values.
+     */
+    private static array $reflectionMethodParams = [];
 
     /**
      * Resets and configures mock data for a specific method.
      *
-     * @param string $methodName    the name of the method to configure
-     * @param array  $results       a list of predefined results to return on subsequent calls
-     * @param array  $exceptions    a list of exceptions to throw on specific calls
-     * @param mixed  $defaultResult the default result to return when no predefined results are available
-     * @param bool   $namedMode     whether to use named mode (parameter-based indexing) for mock behavior
-     * @param array  $outputs       A list of predefined outputs (e.g., echo statements) for the mocked method.
+     * This method clears any existing mock data for the specified method and sets up new mock definitions.
+     *
+     * @param string              $methodName        the name of the method to configure
+     * @param MockDefinition[]    $definitions       an array of MockDefinition objects defining the behavior of the mocked method
+     * @param null|MockDefinition $defaultDefinition a default MockDefinition to use if no specific definition matches
+     * @param bool                $namedMode         whether to use named mode (parameter-based indexing) for mock behavior
      */
     public static function cleanMockData(
         string $methodName,
-        array $results = [],
-        array $exceptions = [],
-        mixed $defaultResult = null,
+        array $definitions = [],
+        ?MockDefinition $defaultDefinition = null,
         bool $namedMode = false,
-        array $outputs = [],
     ): void {
+        if ($namedMode) {
+            $parameters = self::getReflectionMethodParams($methodName);
+        }
+        foreach ($definitions as $index => $definition) {
+            if ($namedMode) {
+                $definition->setIndex(static::getIndex($definition->getParams(), $parameters));
+            } else {
+                $definition->setIndex($index);
+            }
+        }
         self::$mockCounter[$methodName] = 0;
-        self::$mockResults[$methodName] = $results;
-        self::$mockParams[$methodName] = [];
-        self::$mockExceptions[$methodName] = $exceptions;
-        self::$mockDefaultResults[$methodName] = $defaultResult;
+        self::$mockDefinitions[$methodName] = $definitions;
+        self::$mockDefault[$methodName] = $defaultDefinition;
         self::$mockNamedMode[$methodName] = $namedMode;
-        self::$mockOutputs[$methodName] = $outputs;
     }
 
     /**
-     * Generates a hash for a given set of parameters.
+     * Generates a unique index (hash) based on the provided parameters.
      *
-     * This method is used in named mode to associate mock behavior with specific parameter sets.
+     * This method is used in named mode to generate a hash that uniquely identifies a set of parameters.
      *
-     * @param array $params the parameters to hash
+     * @param array $params     the parameters passed to the mocked method
+     * @param array $parameters the default parameter values for the method (from reflection)
      *
-     * @return string a SHA-256 hash of the serialized parameters
+     * @return string a unique hash representing the parameters
      */
-    public static function paramHash(array $params): string
+    private static function getIndex(array $params, array $parameters): string
     {
+        $params = self::applyDefaultValues($params, $parameters);
+
         return hash('sha256', serialize($params));
+    }
+
+    /**
+     * Retrieves the default parameter values for a method using reflection.
+     *
+     * This method caches the reflection data to avoid redundant computations.
+     *
+     * @param string $methodName the name of the method
+     *
+     * @return array an array of default parameter values for the method
+     *
+     * @throws \ReflectionException
+     */
+    private static function getReflectionMethodParams(string $methodName): array
+    {
+        if (!isset(self::$reflectionMethodParams[$methodName])) {
+            $reflectionMethod = new \ReflectionMethod(static::class, $methodName);
+            $params = $reflectionMethod->getParameters();
+            self::$reflectionMethodParams[$methodName] = [];
+            foreach ($params as $parameter) {
+                self::$reflectionMethodParams[$methodName][] = $parameter->isDefaultValueAvailable()
+                    ? $parameter->getDefaultValue()
+                    : null;
+            }
+        }
+
+        return self::$reflectionMethodParams[$methodName];
+    }
+
+    /**
+     * Applies default parameter values to the provided parameters.
+     *
+     * If a parameter is missing in the provided array, its default value (if available) is used.
+     *
+     * @param array $params               the parameters passed to the mocked method
+     * @param array $reflectionParameters the default parameter values for the method (from reflection)
+     *
+     * @return array the updated parameters array with default values applied
+     */
+    private static function applyDefaultValues(array $params, array $reflectionParameters): array
+    {
+        $result = [];
+        foreach ($reflectionParameters as $index => $parameter) {
+            $result[] = array_key_exists($index, $params) ? $params[$index] : $parameter;
+        }
+
+        return $result;
     }
 
     /**
      * Executes a mocked method based on its configuration.
      *
-     * This method is called internally by mocked methods to determine their behavior.
+     * This method determines the behavior of the mocked method by looking up the appropriate MockDefinition
+     * based on the parameters or call index.
      *
      * @param string $methodName the name of the mocked method
      * @param array  $params     the parameters passed to the mocked method
@@ -100,19 +160,23 @@ trait MockTools
      */
     public static function executeMocked(string $methodName, array $params): mixed
     {
-        $index = self::$mockNamedMode[$methodName] ? self::paramHash($params) : self::$mockCounter[$methodName];
-        ++self::$mockCounter[$methodName];
-
-        self::$mockParams[$methodName][$index] = $params;
-        if (isset(self::$mockExceptions[$methodName][$index])) {
-            throw new self::$mockExceptions[$methodName][$index]();
+        if (static::$mockNamedMode[$methodName]) {
+            $parameters = static::getReflectionMethodParams($methodName);
+            $index = static::getIndex($params, $parameters);
+        } else {
+            $index = static::$mockCounter[$methodName];
+        }
+        ++static::$mockCounter[$methodName];
+        static::$mockParams[$methodName][$index] = $params;
+        $definition = static::$mockDefinitions[$methodName][$index] ?? static::$mockDefault[$methodName];
+        if (null === $definition) {
+            return null;
+        }
+        if (!empty($definition->getException())) {
+            throw new ($definition->getException())();
         }
 
-        if (!empty(self::$mockOutputs[$methodName][$index])) {
-            echo self::$mockOutputs[$methodName][$index];
-        }
-
-        return self::$mockResults[$methodName][$index] ?? self::$mockDefaultResults[$methodName] ?? null;
+        return $definition->getResult();
     }
 
     /**

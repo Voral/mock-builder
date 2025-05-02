@@ -7,7 +7,48 @@
 В этой статье мы рассмотрим, как использовать трейт `MockTools` для написания тестов с помощью PHPUnit, а также упомянем
 случаи, где он наиболее эффективен.
 
----
+## Описание класса `MockDefinition`
+
+Класс `MockDefinition` используется для определения поведения моков. Он инкапсулирует параметры, возвращаемые значения,
+исключения и другие аспекты, которые могут быть связаны с вызовом метода.
+
+### Основные компоненты `MockDefinition`:
+
+1. **Параметры (`params`):**
+    - Массив параметров, которые ожидает метод. В режиме `namedMode` эти параметры используются для генерации
+      уникального хеша, который связывает определение с конкретным вызовом.
+
+2. **Возвращаемое значение (`result`):**
+    - Значение, которое будет возвращено при вызове метода. Может быть любого типа: массивом, строкой, числом или
+      объектом.
+
+3. **Исключение (`exception`):**
+    - Класс исключения, который будет выброшен при вызове метода. Это полезно для тестирования обработки ошибок.
+
+4. **Выходные данные (`output`):**
+    - Строка, которая будет выведена (через `echo`) при вызове метода. Это может быть использовано для
+      тестирования вывода данных.
+
+5. **Уникальный индекс (`index`):**
+    - Хеш или числовой индекс, который связывает определение с конкретным вызовом метода. В режиме `namedMode` индекс
+      генерируется автоматически на основе параметров.
+
+### Пример создания `MockDefinition`:
+
+```php
+$definition = new MockDefinition(
+    params: [1], // Параметры метода
+    result: ['id' => 1, 'name' => 'John Doe'], // Возвращаемое значение
+    exception: null, // Исключение (если необходимо)
+    output: null // Выходные данные (если необходимо)
+);
+```
+
+`MockDefinition` является ключевым компонентом для настройки моков с помощью метода `cleanMockData`. Его использование
+позволяет явно задавать поведение метода для каждого набора параметров, что делает тестирование более точным и
+контролируемым.
+
+--- 
 
 ## Основные возможности трейта `MockTools`
 
@@ -68,14 +109,16 @@ class UserServiceTest extends TestCase
     {
         $this->userService = new UserService();
 
+        // Настройка мока с использованием MockDefinition
+        $definition1 = new MockDefinition([1], ['id' => 1, 'name' => 'John Doe']);
+        $definition2 = new MockDefinition([2], ['id' => 2, 'name' => 'Jane Doe']);
+        $defaultDefinition = new MockDefinition(result: ['id' => 0, 'name' => 'Unknown']);
+
         // Настройка мока
         UserService::cleanMockData(
             'getUser',
-            results: [
-                ['id' => 1, 'name' => 'John Doe'], // Первый вызов
-                ['id' => 2, 'name' => 'Jane Doe'], // Второй вызов
-            ],
-            defaultResult: ['id' => 0, 'name' => 'Unknown'], // Результат по умолчанию
+            definitions: [$definition1, $definition2],
+            defaultDefinition: $defaultDefinition,
         );
     }
 
@@ -97,17 +140,15 @@ class UserServiceTest extends TestCase
         $this->assertEquals(3, UserService::getMockedCounter('getUser'));
 
         // Проверка параметров первого вызова
-        $params = UserService::getMockedParams('getUser', 0);
+        $params = UserService::getMockedParams('getUser', $definition1->getIndex());
         $this->assertEquals([1], $params);
     }
 
     public function testExceptionHandling(): void
     {
         // Настройка мока для выброса исключения
-        UserService::cleanMockData(
-            'getUser',
-            exceptions: [new \InvalidArgumentException('Invalid user ID')],
-        );
+        $defaultDefinition = new MockDefinition(exception: \InvalidArgumentException::class);
+        UserService::cleanMockData('getUser', defaultDefinition: $defaultDefinition);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid user ID');
@@ -124,10 +165,9 @@ class UserServiceTest extends TestCase
 
 1. **Настройка мока (`cleanMockData`):**
     - Метод `cleanMockData` используется для задания поведения мока.
-    - Параметр `results` определяет последовательность возвращаемых значений.
-    - Параметр `defaultResult` задаёт значение, которое будет возвращаться, если все значения из `results` уже
-      использованы.
-    - Параметр `exceptions` позволяет настроить выброс исключений при вызове метода.
+    - Параметр `definitions` принимает массив объектов `MockDefinition`, каждый из которых определяет поведение для
+      конкретного набора параметров.
+    - Параметр `defaultDefinition` задаёт значение, которое будет возвращаться, если подходящее определение не найдено.
 
 2. **Проверка результатов:**
     - `$this->assertEquals` используется для сравнения ожидаемого и фактического результата.
@@ -135,7 +175,7 @@ class UserServiceTest extends TestCase
 
 3. **Проверка параметров:**
     - Метод `getMockedParams` возвращает параметры, переданные в конкретный вызов метода.
-    - Индекс `0` соответствует первому вызову, `1` — второму и т.д.
+    - Индекс для проверки параметров генерируется через `$definition->getIndex()`.
 
 4. **Счётчик вызовов:**
     - Метод `getMockedCounter` возвращает общее количество вызовов метода.
@@ -147,19 +187,19 @@ class UserServiceTest extends TestCase
 Именованный режим полезен, когда поведение метода должно зависеть от передаваемых параметров. Например, если метод
 вызывается с разными аргументами, и вы хотите настроить уникальное поведение для каждого набора параметров.
 
-Для этого используется метод `paramHash`, который создаёт хеш на основе переданных параметров. Этот хеш используется как
-ключ для выбора результата.
+Для этого используется объект `MockDefinition`, который автоматически генерирует хеш на основе переданных параметров.
 
 ### Пример использования именованного режима
 
 ```php
 // Настройка мока с именованным режимом
+$definition1 = new MockDefinition([1], ['id' => 1, 'name' => 'John Doe']);
+$definition2 = new MockDefinition([2], ['id' => 2, 'name' => 'Jane Doe']);
+$defaultDefinition = new MockDefinition(result: ['id' => 0, 'name' => 'Unknown']);
 UserService::cleanMockData(
     'getUser',
-    results: [
-        UserService::paramHash([1]) => ['id' => 1, 'name' => 'John Doe'],
-        UserService::paramHash([2]) => ['id' => 2, 'name' => 'Jane Doe'],
-    ],
+    definitions: [$definition1, $definition2],
+    defaultDefinition: $defaultDefinition,
     namedMode: true,
 );
 

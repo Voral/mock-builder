@@ -129,8 +129,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class ATest extends TestCase {
     public function testFoo(): void {
+        // Configure the default mock behavior
+        $definition = new MockDefinition(result: 'test');
         // Configure the mock for the GetMessage function
-        GlobalFunctionMock::cleanMockData('GetMessage', defaultResult: 'test');
+        GlobalFunctionMock::cleanMockData('GetMessage', defaultDefinition: $definition);
 
         // Call the testable method
         $result = A::foo();

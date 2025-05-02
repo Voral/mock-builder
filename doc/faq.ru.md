@@ -128,8 +128,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class ATest extends TestCase {
     public function testFoo(): void {
+        // Настройка поведения мока по умолчанию
+        $definition = new MockDefinition(result:'test');
         // Настройка мока для функции GetMessage
-        GlobalFunctionMock::cleanMockData('GetMessage', defaultResult: 'test');
+        GlobalFunctionMock::cleanMockData('GetMessage', defaultDefinition: $definition);
 
         // Вызов тестируемого метода
         $result = A::foo();

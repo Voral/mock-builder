@@ -1,11 +1,50 @@
 # Testing with the `MockTools` Trait
 
-The `MockTools` trait provides tools to control the behavior of mocks during testing. It is particularly useful in cases
-where the code being tested does not support Dependency Injection, and classes are used internally within other classes.
-In such scenarios, mocks allow you to control the behavior of these internal classes.
+The `MockTools` trait provides tools for managing the behavior of mocks during testing. It is especially useful in cases
+where the code being tested does not support Dependency Injection, and classes are used directly inside other classes.
+In such situations, mocks allow you to control the behavior of these internal classes.
 
-In this article, we will explore how to use the `MockTools` trait to write tests with PHPUnit, as well as discuss the
-cases where it is most effective.
+In this article, we will explore how to use the `MockTools` trait to write tests with PHPUnit, as well as mention cases
+where it is most effective.
+
+## Description of the `MockDefinition` Class
+
+The `MockDefinition` class is used to define the behavior of mocks. It encapsulates parameters, return values,
+exceptions, and other aspects that may be associated with a method call.
+
+### Key Components of `MockDefinition`:
+
+1. **Parameters (`params`):**
+    - An array of parameters that the method expects. In `namedMode`, these parameters are used to generate a unique
+      hash that links the definition to a specific call.
+
+2. **Return Value (`result`):**
+    - The value that will be returned when the method is called. It can be of any type: an array, string, number, or
+      object.
+
+3. **Exception (`exception`):**
+    - The exception class that will be thrown when the method is called. This is useful for testing error handling.
+
+4. **Output Data (`output`):**
+    - A string that will be output (e.g., via `echo`) when the method is called. This can be used to test data output.
+
+5. **Unique Index (`index`):**
+    - A hash or numeric index that links the definition to a specific method call. In `namedMode`, the index is
+      automatically generated based on the parameters.
+
+### Example of Creating a `MockDefinition`:
+
+```php
+$definition = new MockDefinition(
+    params: [1], // Method parameters
+    result: ['id' => 1, 'name' => 'John Doe'], // Return value
+    exception: null, // Exception (if needed)
+    output: null // Output data (if needed)
+);
+```
+
+`MockDefinition` is a key component for configuring mocks using the `cleanMockData` method. Its use allows you to
+explicitly define the behavior of a method for each set of parameters, making testing more precise and controllable.
 
 ---
 
@@ -16,21 +55,21 @@ cases where it is most effective.
     - Both default mode and named parameter mode are supported.
 
 2. **Throwing Exceptions:**
-    - You can configure a method to throw an exception under specific conditions.
+    - You can configure a method to throw an exception under certain calls.
 
-3. **Parameter Verification:**
-    - After executing a test, you can verify which parameters were passed to a method.
+3. **Checking Parameters:**
+    - After running a test, you can verify which parameters were passed to the method.
 
 4. **Call Counter:**
-    - The trait tracks the number of times each method is called.
+    - The trait tracks the number of calls made to each method.
 
 ---
 
-## Example Usage
+## Usage Example
 
-### 1. Setting Up the Mock
+### 1. Setting Up a Mock
 
-Suppose we have a class `UserService` that we want to test:
+Suppose we have a `UserService` class that we want to test:
 
 ```php
 <?php
@@ -46,13 +85,13 @@ class UserService
 }
 ```
 
-The `getUser` method uses `self::executeMocked`, which allows us to control its behavior using the `MockTools` trait.
+The `getUser` method uses `self::executeMocked`, which allows us to control its behavior through the `MockTools` trait.
 
 ---
 
-### 2. Writing the Test
+### 2. Writing a Test
 
-Below is an example test using PHPUnit:
+Below is an example of a test using PHPUnit:
 
 ```php
 <?php
@@ -68,14 +107,16 @@ class UserServiceTest extends TestCase
     {
         $this->userService = new UserService();
 
-        // Setting up the mock
+        // Setting up a mock using MockDefinition
+        $definition1 = new MockDefinition([1], ['id' => 1, 'name' => 'John Doe']);
+        $definition2 = new MockDefinition([2], ['id' => 2, 'name' => 'Jane Doe']);
+        $defaultDefinition = new MockDefinition(result: ['id' => 0, 'name' => 'Unknown']);
+
+        // Configuring the mock
         UserService::cleanMockData(
             'getUser',
-            results: [
-                ['id' => 1, 'name' => 'John Doe'], // First call
-                ['id' => 2, 'name' => 'Jane Doe'], // Second call
-            ],
-            defaultResult: ['id' => 0, 'name' => 'Unknown'], // Default result
+            definitions: [$definition1, $definition2],
+            defaultDefinition: $defaultDefinition,
         );
     }
 
@@ -93,26 +134,24 @@ class UserServiceTest extends TestCase
         $result = $this->userService->getUser(3);
         $this->assertEquals(['id' => 0, 'name' => 'Unknown'], $result);
 
-        // Verifying the number of calls
+        // Checking the number of calls
         $this->assertEquals(3, UserService::getMockedCounter('getUser'));
 
-        // Verifying the parameters of the first call
-        $params = UserService::getMockedParams('getUser', 0);
+        // Checking the parameters of the first call
+        $params = UserService::getMockedParams('getUser', $definition1->getIndex());
         $this->assertEquals([1], $params);
     }
 
     public function testExceptionHandling(): void
     {
-        // Setting up the mock to throw an exception
-        UserService::cleanMockData(
-            'getUser',
-            exceptions: [new \InvalidArgumentException('Invalid user ID')],
-        );
+        // Configuring the mock to throw an exception
+        $defaultDefinition = new MockDefinition(exception: \InvalidArgumentException::class);
+        UserService::cleanMockData('getUser', defaultDefinition: $defaultDefinition);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid user ID');
 
-        // Calling the method that will throw an exception
+        // Calling the method, which will throw an exception
         $this->userService->getUser(999);
     }
 }
@@ -122,43 +161,44 @@ class UserServiceTest extends TestCase
 
 ### 3. Explanation of the Code
 
-1. **Setting Up the Mock (`cleanMockData`):**
+1. **Configuring the Mock (`cleanMockData`):**
     - The `cleanMockData` method is used to define the behavior of the mock.
-    - The `results` parameter specifies a sequence of return values.
-    - The `defaultResult` parameter defines the value that will be returned if all values in `results` have been used.
-    - The `exceptions` parameter allows you to configure exceptions to be thrown during method calls.
+    - The `definitions` parameter accepts an array of `MockDefinition` objects, each defining the behavior for a
+      specific set of parameters.
+    - The `defaultDefinition` parameter specifies the value that will be returned if no matching definition is found.
 
 2. **Verifying Results:**
     - `$this->assertEquals` is used to compare the expected and actual results.
     - `$this->expectException` checks that the method throws the expected exception.
 
-3. **Verifying Parameters:**
+3. **Checking Parameters:**
     - The `getMockedParams` method returns the parameters passed to a specific method call.
-    - Index `0` corresponds to the first call, `1` to the second, and so on.
+    - The index for checking parameters is generated via `$definition->getIndex()`.
 
 4. **Call Counter:**
-    - The `getMockedCounter` method returns the total number of times a method was called.
+    - The `getMockedCounter` method returns the total number of calls made to the method.
 
 ---
 
 ## Named Mode
 
-Named mode is useful when the behavior of a method depends on the parameters passed. For example, if a method is called
-with different arguments, and you want to configure unique behavior for each set of parameters.
+Named mode is useful when the behavior of a method should depend on the parameters passed. For example, if a method is
+called with different arguments, and you want to configure unique behavior for each set of parameters.
 
-The `paramHash` method is used to create a hash based on the passed parameters. This hash serves as a key for selecting
-the result.
+For this purpose, the `MockDefinition` object is used, which automatically generates a hash based on the passed
+parameters.
 
 ### Example of Using Named Mode
 
 ```php
-// Setting up the mock in named mode
+// Configuring a mock with named mode
+$definition1 = new MockDefinition([1], ['id' => 1, 'name' => 'John Doe']);
+$definition2 = new MockDefinition([2], ['id' => 2, 'name' => 'Jane Doe']);
+$defaultDefinition = new MockDefinition(result: ['id' => 0, 'name' => 'Unknown']);
 UserService::cleanMockData(
     'getUser',
-    results: [
-        UserService::paramHash([1]) => ['id' => 1, 'name' => 'John Doe'],
-        UserService::paramHash([2]) => ['id' => 2, 'name' => 'Jane Doe'],
-    ],
+    definitions: [$definition1, $definition2],
+    defaultDefinition: $defaultDefinition,
     namedMode: true,
 );
 
@@ -171,26 +211,26 @@ public function testNamedMode(): void
     $result = $this->userService->getUser(2);
     $this->assertEquals(['id' => 2, 'name' => 'Jane Doe'], $result);
 
-    // Verifying that no result is found for an unknown parameter
+    // Checking that the method will not find a matching result for an unknown parameter
     $result = $this->userService->getUser(3);
     $this->assertNull($result);
 }
 ```
 
-### Problem Being Solved
+### Problem Solved
 
 Named mode is especially useful when:
 
 - A method is called with different parameters, and you need to configure unique behavior for each set of parameters.
-- The code being tested does not support Dependency Injection, and classes are used internally within other classes. In
+- The code being tested does not support Dependency Injection, and classes are used directly inside other classes. In
   such cases, it is impossible to replace real objects with mocks using standard PHPUnit tools.
 
 ---
 
 ## Conclusion
 
-The `MockTools` trait significantly simplifies testing by providing flexible tools to control the behavior of mocks. It
-is particularly useful in cases where the code being tested does not support Dependency Injection, and classes are used
-internally within other classes.
+The `MockTools` trait significantly simplifies testing classes by providing flexible tools for managing mock behavior.
+It is especially useful in cases where the code being tested does not support Dependency Injection, and classes are used
+inside other classes.
 
 Use the examples from this article as a basis for writing your own tests with PHPUnit.
