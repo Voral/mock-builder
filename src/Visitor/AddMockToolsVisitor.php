@@ -38,6 +38,7 @@ class AddMockToolsVisitor extends ModuleVisitor
         }
         $this->copyMockTools($traitTargetDir . '/MockTools.php');
         $this->copyMockTools($traitTargetDir . '/MockDefinition.php');
+        $this->copyMockTools($traitTargetDir . '/MockFunctions.php');
     }
 
     private function copyMockTools(string $targetFile): void

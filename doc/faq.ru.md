@@ -62,20 +62,24 @@ require_once __DIR__ . '/custom_autoloader.php';
 
 ---
 
-### Как создавать моки для функций в глобальной области видимости?
+### **Как создавать моки для функций в глобальной области видимости?**
 
 Утилита не поддерживает автоматическую генерацию моков для функций в глобальной области видимости, так как PHP не
-позволяет переопределять функции напрямую. Однако вы можете вручную создать моки для таких функций, используя
-сгенерированный трейт `MockTools`. Вот пошаговое руководство:
+позволяет переопределять функции напрямую. Однако вы можете легко создавать моки для таких функций, используя
+сгенерированный класс `MockFunctions`. Этот класс уже включает трейт `MockTools` и предоставляет готовый инструмент для
+управления поведением моков.
 
-#### 1. Создайте вспомогательный класс для моков
+#### 1. Используйте сгенерированный класс `MockFunctions`
 
-Создайте класс, который будет использовать трейт `MockTools` для управления поведением моков. Например:
+При генерации моков утилита автоматически создаёт класс `MockFunctions` в пространстве имён `\Mocker`. Этот класс
+использует трейт `MockTools` и готов к использованию для создания моков глобальных функций.
+
+Пример класса `MockFunctions`:
 
 ```php
 namespace App\Mocker;
 
-class GlobalFunctionMock {
+class MockFunctions {
     use MockTools;
 }
 ```
@@ -83,11 +87,11 @@ class GlobalFunctionMock {
 #### 2. Создайте файл с моками для глобальных функций
 
 Создайте отдельный файл (например, `test/function_mock.php`), в котором определите моки для нужных функций. Реализуйте
-каждую функцию так, чтобы она вызывала соответствующий метод вспомогательного класса. Например:
+каждую функцию так, чтобы она вызывала соответствующий метод класса `MockFunctions`. Например:
 
 ```php
 function GetMessage(string $messageCode, array $replace = [], $language = null): string {
-    return \App\Mocker\GlobalFunctionMock::executeMocked('GetMessage', [$messageCode, $replace, $language]);
+    return \App\Mocker\MockFunctions::executeMocked('GetMessage', [$messageCode, $replace, $language]);
 }
 ```
 
@@ -118,7 +122,7 @@ declare(strict_types=1);
 
 namespace App;
 
-use App\Mocker\GlobalFunctionMock;
+use App\Mocker\MockFunctions;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -129,9 +133,9 @@ use PHPUnit\Framework\TestCase;
 final class ATest extends TestCase {
     public function testFoo(): void {
         // Настройка поведения мока по умолчанию
-        $definition = new MockDefinition(result:'test');
+        $definition = new MockDefinition(result: 'test');
         // Настройка мока для функции GetMessage
-        GlobalFunctionMock::cleanMockData('GetMessage', defaultDefinition: $definition);
+        MockFunctions::cleanMockData('GetMessage', defaultDefinition: $definition);
 
         // Вызов тестируемого метода
         $result = A::foo();
@@ -140,10 +144,10 @@ final class ATest extends TestCase {
         self::assertSame('testtest', $result);
 
         // Проверка количества вызовов функции
-        self::assertSame(2, GlobalFunctionMock::getMockedCounter('GetMessage'));
+        self::assertSame(2, MockFunctions::getMockedCounter('GetMessage'));
 
         // Проверка параметров вызовов
-        $params = GlobalFunctionMock::getMockedParamsAll('GetMessage');
+        $params = MockFunctions::getMockedParamsAll('GetMessage');
         self::assertSame('test1', $params[0][0]); // Первый вызов с параметром 'test1'
         self::assertSame('test2', $params[1][0]); // Второй вызов с параметром 'test2'
     }
@@ -152,16 +156,16 @@ final class ATest extends TestCase {
 
 #### Примечания
 
-1. **Ручное создание моков**:
-    - Утилита не может автоматически обрабатывать функции в глобальной области видимости, поэтому вам нужно вручную
-      создавать моки для таких функций.
-    - Убедитесь, что моки загружаются перед выполнением тестируемого кода (например, через автозагрузку или явное
-      подключение файла).
+1. **Автоматическая генерация класса `MockFunctions`:**
+    - Утилита автоматически создаёт класс `MockFunctions` в процессе генерации моков. Этот класс уже включает
+      трейт `MockTools` и готов к использованию.
+    - Убедитесь, что файл с моками загружается перед выполнением тестируемого кода (например, через автозагрузку или
+      явное подключение файла).
 
-2. **Изоляция тестов**:
+2. **Изоляция тестов:**
     - Используйте метод `cleanMockData` для очистки состояния моков перед каждым тестом, чтобы избежать побочных
       эффектов.
 
-3. **Гибкость настройки**:
+3. **Гибкость настройки:**
     - Вы можете настраивать поведение моков, указывая предопределённые результаты, исключения или значения по умолчанию.
-
+    - Также можно отслеживать объект, вызвавший функцию, используя метод `getMockedEntity`.
