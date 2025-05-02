@@ -74,9 +74,11 @@ class Builder
             return;
         }
         $this->processedFiles[$filePath] = true;
+
         if ($this->config->displayProgress) {
             echo 'Processing file: ', $filePath, PHP_EOL;
         }
+
         $code = file_get_contents($filePath);
 
         $parser = (new ParserFactory())->createForHostVersion();
@@ -92,12 +94,10 @@ class Builder
         $modifiedAst = $this->traverser->traverse($ast);
 
         $printer = new PrettyPrinter\Standard();
-        $newCode = $printer->prettyPrintFile($modifiedAst);
 
-        $namespace = '';
-        $class = '';
         foreach ($modifiedAst as $node) {
             if ($node instanceof Namespace_) {
+                $namespace = '';
                 if ($node->name instanceof Name) {
                     $namespace = implode('\\', $node->name->getParts());
                 } else {
@@ -106,25 +106,44 @@ class Builder
                         true,
                     ) . "\n";
 
-                    return;
+                    continue;
                 }
+
                 foreach ($node->stmts as $stmt) {
-                    if (isset($stmt->name->name) && $this->neededNode($stmt)) {
+                    if ($this->neededNode($stmt)) {
                         if (!$this->matchesFilter($stmt)) {
-                            return;
+                            continue;
                         }
-                        $class = $stmt->name->name;
-                        break;
+
+                        // Create a new Namespace node with only the current class
+                        $newNamespace = new Namespace_(
+                            $node->name,
+                            [$stmt], // Include only the current class/interface/trait
+                        );
+
+                        $classCode = $printer->prettyPrintFile([$newNamespace]);
+                        $this->saveClassToFile($stmt, $namespace, $classCode, $filePath);
                     }
                 }
-            } elseif (isset($node->name->name) && $this->neededNode($node)) {
+            } elseif ($this->neededNode($node)) {
                 if (!$this->matchesFilter($node)) {
-                    return;
+                    continue;
                 }
-                $class = $node->name->name;
-                break;
+
+                // Create a new AST for global classes
+                $classCode = $printer->prettyPrintFile([$node]);
+                $this->saveClassToFile($node, '', $classCode, $filePath);
             }
         }
+    }
+
+    private function saveClassToFile(
+        \PhpParser\Node $node,
+        string $namespace,
+        string $classCode,
+        string $filePath,
+    ): void {
+        $class = $node->name->name ?? '';
 
         if (empty($class)) {
             echo "Warning: Class name not found in the file: {$filePath}\n";
@@ -141,8 +160,9 @@ class Builder
         if (!is_dir($targetDir) && !mkdir($targetDir, 0o775, true)) {
             exit("Error: Failed to create target directory: {$targetDir}\n");
         }
+
         $targetFile = $targetDir . '/' . $class . '.php';
-        if (false === file_put_contents($targetFile, $newCode)) {
+        if (false === file_put_contents($targetFile, $classCode)) {
             exit("Error: Failed to save transformed file: {$targetFile}\n");
         }
     }
