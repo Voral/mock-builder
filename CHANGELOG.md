@@ -1,3 +1,20 @@
+# 0.7.0 (2025-05-02)
+
+### New features
+- split multiple classes from a single file into separate files
+- add conditional logging for global namespace classes
+- add support for mocking global functions via MockFunctions class
+- add support for tracking calling objects in mocked methods
+- add auto-registration for mocked methods to handle undefined calls
+
+### Fixes
+- prevent duplicate processing of files during graph traversal
+- resolve leading slash issue in class names by handling imports and namespaces
+- replace "resource" return type with "mixed" to resolve PHP warnings
+
+### Refactoring
+- simplify mock configuration by removing explicit hash handling and supporting default parameters
+
 # 0.6.0 (2025-04-29)
 
 ### New features
