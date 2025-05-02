@@ -227,6 +227,47 @@ Named mode is especially useful when:
 
 ---
 
+### **Retrieving the Calling Object**
+
+Sometimes during testing, it’s important to know which specific object instance called a method. For example, if you
+have a `Logger` class that is used in different parts of your application, you might want to verify which object
+initiated the logging.
+
+To support this, the `MockTools` trait provides functionality to track calling objects. Each time a mocked method is
+called, a reference to the object that invoked the method is saved. You can retrieve it using the `getMockedEntity`
+method.
+
+#### Example:
+
+```php
+class Service
+{
+    public function logMessage(string $message): void
+    {
+        self::executeMocked(__FUNCTION__, func_get_args(), $this);
+    }
+}
+
+class LoggerTest extends TestCase
+{
+    public function testLogMessage(): void
+    {
+        $service = new Service();
+        $service->logMessage('Test message');
+
+        // Verify that the method was called by the $service object
+        $caller = Service::getMockedEntity('logMessage');
+        $this->assertSame($service, $caller);
+    }
+}
+```
+
+In this example, we verify that the `logMessage` method was called by the specific `$service` instance. This is
+especially useful when the same method can be called by different objects, and you need to ensure that the call
+originated from the expected context.
+
+---
+
 ## Conclusion
 
 The `MockTools` trait significantly simplifies testing classes by providing flexible tools for managing mock behavior.

@@ -109,12 +109,14 @@ class AddMockToolsVisitor extends ModuleVisitor
             static fn($param) => new Node\Expr\ArrayItem(new Node\Expr\Variable($param->var->name)),
             $method->getParams(),
         );
+
         $staticCall = new Node\Expr\StaticCall(
             new Name('self'),
             'executeMocked',
             [
                 new Node\Arg(new Node\Scalar\String_($method->name->toString())),
                 new Node\Arg(new Node\Expr\Array_($params)),
+                $method->isStatic() ? null : new Node\Arg(new Node\Expr\Variable('this')),
             ],
         );
         $returnsValue = $this->shouldReturn($method);

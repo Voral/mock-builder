@@ -55,6 +55,8 @@ trait MockTools
      */
     private static array $reflectionMethodParams = [];
 
+    private static array $mockEntity = [];
+
     /**
      * Resets and configures mock data for a specific method.
      *
@@ -64,6 +66,8 @@ trait MockTools
      * @param MockDefinition[]    $definitions       an array of MockDefinition objects defining the behavior of the mocked method
      * @param null|MockDefinition $defaultDefinition a default MockDefinition to use if no specific definition matches
      * @param bool                $namedMode         whether to use named mode (parameter-based indexing) for mock behavior
+     *
+     * @throws \ReflectionException
      */
     public static function cleanMockData(
         string $methodName,
@@ -164,7 +168,7 @@ trait MockTools
      *
      * @throws \Throwable if an exception is configured for the current call
      */
-    public static function executeMocked(string $methodName, array $params): mixed
+    public static function executeMocked(string $methodName, array $params, ?object $entity = null): mixed
     {
         if (!isset(self::$mockCounter[$methodName])) {
             self::registerAuto($methodName);
@@ -178,6 +182,7 @@ trait MockTools
         }
         ++static::$mockCounter[$methodName];
         static::$mockParams[$methodName][$index] = $params;
+        static::$mockEntity[$methodName][$index] = $entity;
         $definition = static::$mockDefinitions[$methodName][$index] ?? static::$mockDefault[$methodName];
         if (null === $definition) {
             return null;
@@ -226,12 +231,19 @@ trait MockTools
         return self::$mockCounter[$methodName] ?? 0;
     }
 
+    public static function getMockedEntity(string $methodName): ?object
+    {
+        return self::$mockEntity[$methodName] ?? null;
+    }
+
     /**
      * Automatically registers a method for mocking if it hasn't been explicitly configured.
      *
      * This method initializes default mock data for the specified method.
      *
      * @param string $methodName the name of the method to register
+     *
+     * @throws \ReflectionException
      */
     protected static function registerAuto(string $methodName): void
     {
