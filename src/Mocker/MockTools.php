@@ -13,6 +13,12 @@ namespace Vasoft\MockBuilder\Mocker;
 trait MockTools
 {
     /**
+     * @var array Tracks whether a method has been automatically registered.
+     *            Keys are method names, and values are booleans indicating registration status.
+     */
+    private static array $auto = [];
+
+    /**
      * @var array Tracks the number of calls for each mocked method.
      *            Keys are method names, and values are the call counts.
      */
@@ -107,7 +113,7 @@ trait MockTools
      *
      * @return array an array of default parameter values for the method
      *
-     * @throws \ReflectionException
+     * @throws \ReflectionException if the method does not exist or cannot be reflected
      */
     private static function getReflectionMethodParams(string $methodName): array
     {
@@ -160,6 +166,10 @@ trait MockTools
      */
     public static function executeMocked(string $methodName, array $params): mixed
     {
+        if (!isset(self::$mockCounter[$methodName])) {
+            self::registerAuto($methodName);
+        }
+
         if (static::$mockNamedMode[$methodName]) {
             $parameters = static::getReflectionMethodParams($methodName);
             $index = static::getIndex($params, $parameters);
@@ -214,5 +224,18 @@ trait MockTools
     public static function getMockedCounter(string $methodName): int
     {
         return self::$mockCounter[$methodName] ?? 0;
+    }
+
+    /**
+     * Automatically registers a method for mocking if it hasn't been explicitly configured.
+     *
+     * This method initializes default mock data for the specified method.
+     *
+     * @param string $methodName the name of the method to register
+     */
+    protected static function registerAuto(string $methodName): void
+    {
+        self::$auto[$methodName] = true;
+        self::cleanMockData($methodName);
     }
 }
