@@ -126,7 +126,7 @@ class Builder
             return;
         }
 
-        if (empty($namespace)) {
+        if ($this->config->displayProgress && empty($namespace)) {
             echo "Info: Class '{$class}' is in the global namespace. File: {$filePath}\n";
         }
 
