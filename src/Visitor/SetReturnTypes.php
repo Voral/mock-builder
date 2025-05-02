@@ -120,7 +120,11 @@ class SetReturnTypes extends ModuleVisitor
 
                         return;
                     }
+                    if ('resource' === $typeName) {
+                        $method->returnType = new Identifier('mixed');
 
+                        return;
+                    }
                     if (str_starts_with($typeName, '?')) {
                         $innerTypeName = substr($typeName, 1);
                         $method->returnType = new NullableType(new Name($innerTypeName));

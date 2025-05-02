@@ -30,7 +30,7 @@
     }
   ],
   "scripts": {
-    "build-mock": "php ./bin/vs-mock-builder.php",
+    "mock:build": "php ./bin/vs-mock-builder.php",
     "vi:auto": "php vendor/bin/vs-version-increment",
     "vi:debug": "php vendor/bin/vs-version-increment --debug",
     "stan": "vendor/bin/phpstan analyse src",
