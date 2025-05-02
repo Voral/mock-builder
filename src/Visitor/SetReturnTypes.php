@@ -14,6 +14,8 @@ use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Trait_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node;
+use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\Stmt\UseUse;
 
 /**
  * PublicMethodVisitor is a custom AST visitor that modifies the Abstract Syntax Tree (AST) of PHP code.
@@ -24,6 +26,7 @@ use PhpParser\Node;
 class SetReturnTypes extends ModuleVisitor
 {
     private DocBlockFactory|DocBlockFactoryInterface $docBlockFactory;
+    private array $imports = [];
 
     public function __construct(
         private readonly string $targetPhpVersion = PHP_VERSION,
@@ -31,6 +34,28 @@ class SetReturnTypes extends ModuleVisitor
     ) {
         parent::__construct($skipThrowable);
         $this->docBlockFactory = DocBlockFactory::createInstance();
+    }
+
+    public function enterNode(Node $node): null|array|int|Node
+    {
+        if ($node instanceof Use_) {
+            foreach ($node->uses as $use) {
+                $this->addImport($use);
+            }
+        }
+
+        return null;
+    }
+
+    private function addImport(UseUse $use): void
+    {
+        $alias = $use->alias ? $use->alias->name : $use->name->getLast();
+        $this->imports[$alias] = $use->name->toString();
+    }
+
+    private function getImports(): array
+    {
+        return $this->imports;
     }
 
     /**
@@ -91,6 +116,7 @@ class SetReturnTypes extends ModuleVisitor
                     $typeName = trim((string) $type);
 
                     $parts = array_map('trim', explode('|', $typeName));
+                    $parts = array_map([$this, 'resolveTypeName'], $parts);
                     if (count($parts) > 1 && in_array('mixed', $parts, true)) {
                         $typeName = 'mixed';
                     } else {
@@ -104,12 +130,16 @@ class SetReturnTypes extends ModuleVisitor
                         }
                         $parts = array_unique($parts);
                         $typeName = implode('|', $parts);
+                        if (count($parts) > 1) {
+                            $method->returnType = new Identifier($typeName);
+
+                            return;
+                        }
                     }
 
                     if ('true' === $typeName && version_compare($this->targetPhpVersion, '8.2.0', '<')) {
                         $typeName = 'bool';
                     }
-
                     if ('$this' === $typeName) {
                         $method->returnType = new Identifier('static');
 
@@ -127,16 +157,47 @@ class SetReturnTypes extends ModuleVisitor
                     }
                     if (str_starts_with($typeName, '?')) {
                         $innerTypeName = substr($typeName, 1);
-                        $method->returnType = new NullableType(new Name($innerTypeName));
+                        $method->returnType = new NullableType(
+                            new Name($this->resolveTypeName($innerTypeName)),
+                        );
 
                         return;
                     }
 
-                    $method->returnType = new Name($typeName);
+                    $method->returnType = new Name($this->resolveTypeName($typeName));
                 }
             } catch (\Exception $e) {
                 return;
             }
         }
+    }
+
+    private function resolveTypeName(string $typeName): string
+    {
+        if (str_starts_with($typeName, '\\')) {
+            $typeNameWithoutSlash = substr($typeName, 1);
+
+            $imports = $this->getImports();
+
+            foreach ($imports as $alias => $fullyQualifiedClassName) {
+                if ($alias === $typeNameWithoutSlash || $fullyQualifiedClassName === $typeNameWithoutSlash) {
+                    return $typeNameWithoutSlash;
+                }
+            }
+
+            $currentNamespace = $this->getCurrentNamespace();
+            if ($currentNamespace && str_starts_with($typeNameWithoutSlash, $currentNamespace)) {
+                return $typeNameWithoutSlash;
+            }
+
+            return $typeName;
+        }
+
+        return $typeName;
+    }
+
+    private function getCurrentNamespace(): ?string
+    {
+        return $this->currentNamespace ?? null;
     }
 }
