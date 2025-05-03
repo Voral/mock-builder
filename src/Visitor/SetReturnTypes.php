@@ -17,6 +17,7 @@ use PhpParser\Node;
 use PhpParser\Node\Stmt\Use_;
 use PhpParser\Node\Stmt\UseUse;
 use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\Node\Stmt\Return_;
 
 /**
  * PublicMethodVisitor is a custom AST visitor that modifies the Abstract Syntax Tree (AST) of PHP code.
@@ -92,6 +93,9 @@ class SetReturnTypes extends ModuleVisitor
 
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
+                    if ('__construct' === $method->name->name) {
+                        continue;
+                    }
                     $methodName = $className . '::' . $method->name->name;
                     if (!$method->returnType
                         && !empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
@@ -115,8 +119,49 @@ class SetReturnTypes extends ModuleVisitor
         return null;
     }
 
+    private function containsReturnStatement(Node $node): bool
+    {
+        if ($node instanceof Return_) {
+            return true;
+        }
+
+        // Рекурсивно проверяем дочерние узлы
+        foreach ($node->getSubNodeNames() as $subNodeName) {
+            $subNode = $node->{$subNodeName};
+            if (is_array($subNode)) {
+                foreach ($subNode as $childNode) {
+                    if ($childNode instanceof Node && $this->containsReturnStatement($childNode)) {
+                        return true;
+                    }
+                }
+            } elseif ($subNode instanceof Node && $this->containsReturnStatement($subNode)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function addReturnType(ClassMethod $method): void
     {
+        // Если тело метода существует, анализируем его
+        if (isset($method->stmts)) {
+            $hasReturn = false;
+
+            foreach ($method->stmts as $stmt) {
+                // Проверяем, содержит ли узел оператор return
+                if ($this->containsReturnStatement($stmt)) {
+                    $hasReturn = true;
+                    break;
+                }
+            }
+
+            // Устанавливаем тип mixed, если есть return, иначе void
+            $method->returnType = $hasReturn ? new Identifier('mixed') : new Identifier('void');
+
+            return;
+        }
+
         $docComment = $method->getDocComment();
         if ($docComment) {
             try {
