@@ -81,18 +81,18 @@ class SetReturnTypes extends ModuleVisitor
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
                     $methodName = $className . '::' . $method->name->name;
-                    if (!$method->returnType) {
-                        if (!empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
-                            $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
-                        } elseif (null !== $data) {
-                            $method->returnType = $data->getMethodReturnTypeRecursively(
-                                $method->name->name,
-                                $this->dependenceGraph,
-                            );
-                        }
+                    if (!$method->returnType
+                        && !empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
+                        $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
                     }
                     if (!$method->returnType) {
                         $this->addReturnType($method, $className);
+                    }
+                    if (!$method->returnType && null !== $data) {
+                        $method->returnType = $data->getMethodReturnTypeRecursively(
+                            $method->name->name,
+                            $this->dependenceGraph,
+                        );
                     }
                     $data?->setMethodReturnType($method->name->name, $method->returnType);
                 }
@@ -111,6 +111,13 @@ class SetReturnTypes extends ModuleVisitor
                 $docBlock = $this->docBlockFactory->create($docComment->getText());
                 /** @var TagWithType[] $returnTag */
                 $returnTag = $docBlock->getTagsByName('return');
+                //                if ($method->name->name === 'cast'){
+                //                    print_r([
+                //                        $className ,
+                //                        $method->name->name,
+                //                        (string)$returnTag[0]->getType(),
+                //                    ]);
+                //                }
                 if (!empty($returnTag)) {
                     $type = $returnTag[0]->getType();
                     $typeName = trim((string) $type);
