@@ -16,6 +16,7 @@ use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node;
 use PhpParser\Node\Stmt\Use_;
 use PhpParser\Node\Stmt\UseUse;
+use PhpParser\Node\Stmt\Namespace_;
 
 /**
  * PublicMethodVisitor is a custom AST visitor that modifies the Abstract Syntax Tree (AST) of PHP code.
@@ -26,6 +27,9 @@ use PhpParser\Node\Stmt\UseUse;
 class SetReturnTypes extends ModuleVisitor
 {
     private DocBlockFactory|DocBlockFactoryInterface $docBlockFactory;
+    private ?string $currentNamespace = null;
+    private ?string $rootNamespace = null;
+
     private array $imports = [];
 
     public function __construct(
@@ -38,6 +42,14 @@ class SetReturnTypes extends ModuleVisitor
 
     public function enterNode(Node $node): null|array|int|Node
     {
+        if ($node instanceof Namespace_) {
+            $this->currentNamespace = $node->name ? $node->name->toString() : null;
+            if (null !== $this->currentNamespace) {
+                $parts = explode('\\', $this->currentNamespace);
+                $this->rootNamespace = $parts[0] ? '\\' . $parts[0] : null;
+            }
+        }
+
         if ($node instanceof Use_) {
             foreach ($node->uses as $use) {
                 $this->addImport($use);
@@ -86,7 +98,7 @@ class SetReturnTypes extends ModuleVisitor
                         $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
                     }
                     if (!$method->returnType) {
-                        $this->addReturnType($method, $className);
+                        $this->addReturnType($method);
                     }
                     if (!$method->returnType && null !== $data) {
                         $method->returnType = $data->getMethodReturnTypeRecursively(
@@ -103,7 +115,7 @@ class SetReturnTypes extends ModuleVisitor
         return null;
     }
 
-    private function addReturnType(ClassMethod $method, string $className): void
+    private function addReturnType(ClassMethod $method): void
     {
         $docComment = $method->getDocComment();
         if ($docComment) {
@@ -111,13 +123,6 @@ class SetReturnTypes extends ModuleVisitor
                 $docBlock = $this->docBlockFactory->create($docComment->getText());
                 /** @var TagWithType[] $returnTag */
                 $returnTag = $docBlock->getTagsByName('return');
-                //                if ($method->name->name === 'cast'){
-                //                    print_r([
-                //                        $className ,
-                //                        $method->name->name,
-                //                        (string)$returnTag[0]->getType(),
-                //                    ]);
-                //                }
                 if (!empty($returnTag)) {
                     $type = $returnTag[0]->getType();
                     $typeName = trim((string) $type);
@@ -164,9 +169,7 @@ class SetReturnTypes extends ModuleVisitor
                     }
                     if (str_starts_with($typeName, '?')) {
                         $innerTypeName = substr($typeName, 1);
-                        $method->returnType = new NullableType(
-                            new Name($this->resolveTypeName($innerTypeName)),
-                        );
+                        $method->returnType = new NullableType(new Name($this->resolveTypeName($innerTypeName)));
 
                         return;
                     }
@@ -181,6 +184,9 @@ class SetReturnTypes extends ModuleVisitor
 
     private function resolveTypeName(string $typeName): string
     {
+        if (null !== $this->rootNamespace && str_starts_with($typeName, $this->rootNamespace)) {
+            return $typeName;
+        }
         if (str_starts_with($typeName, '\\')) {
             $typeNameWithoutSlash = substr($typeName, 1);
 
@@ -196,8 +202,6 @@ class SetReturnTypes extends ModuleVisitor
             if ($currentNamespace && str_starts_with($typeNameWithoutSlash, $currentNamespace)) {
                 return $typeNameWithoutSlash;
             }
-
-            return $typeName;
         }
 
         return $typeName;
