@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vasoft\MockBuilder\Mocker;
+namespace Bitrix\Mocker;
 
 /**
  * MockTools is a trait that provides tools for controlling the behavior of mocked methods during testing.
@@ -78,15 +78,15 @@ trait MockTools
         if ($namedMode) {
             $parameters = self::getReflectionMethodParams($methodName);
         }
+        self::$mockDefinitions[$methodName] = [];
         foreach ($definitions as $index => $definition) {
             if ($namedMode) {
-                $definition->setIndex(static::getIndex($definition->getParams(), $parameters));
-            } else {
-                $definition->setIndex($index);
+                $index = static::getIndex($definition->getParams(), $parameters);
             }
+            $definition->setIndex($index);
+            self::$mockDefinitions[$methodName][$index] = $definition;
         }
         self::$mockCounter[$methodName] = 0;
-        self::$mockDefinitions[$methodName] = $definitions;
         self::$mockDefault[$methodName] = $defaultDefinition;
         self::$mockNamedMode[$methodName] = $namedMode;
     }
