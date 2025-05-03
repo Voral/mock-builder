@@ -8,16 +8,16 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\Node\Stmt\Nop;
 use PhpParser\Node\Stmt\Trait_;
+use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\Stmt\UseUse;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
 use PHPStan\PhpDocParser\Ast\Node;
 use Vasoft\MockBuilder\Visitor\ModuleVisitor;
-use PhpParser\Node\Stmt\Use_;
-use PhpParser\Node\Stmt\Nop;
-use PhpParser\Node\Stmt\UseUse;
 
 /**
  * The Builder class is responsible for processing PHP files and directories to generate mock classes.
@@ -107,10 +107,11 @@ class Builder
                 }
             } elseif ($node instanceof Namespace_) {
                 // Collect use statements inside namespaces
+                $namespaceName = $node->name ? $node->name->toString() : null;
                 foreach ($node->stmts as $stmt) {
                     if ($stmt instanceof Use_) {
                         foreach ($stmt->uses as $use) {
-                            $namespaceUseStatements[$node->name->toString()][] = new Use_(
+                            $namespaceUseStatements[$namespaceName][] = new Use_(
                                 [new UseUse(new Name($use->name->toString()))],
                             );
                         }
@@ -127,6 +128,8 @@ class Builder
             if ($node instanceof Namespace_) {
                 // Check if namespace name exists
                 $namespaceName = $node->name ? $node->name->toString() : null;
+
+                // Add collected use statements to the namespace
                 if ($namespaceName && !empty($namespaceUseStatements[$namespaceName])) {
                     $node->stmts = array_merge($namespaceUseStatements[$namespaceName], [new Nop()], $node->stmts);
                 }
@@ -142,7 +145,7 @@ class Builder
                         // Create a new Namespace node with only the current class
                         $newNamespace = new Namespace_(
                             $node->name,
-                            [$stmt], // Include only the current class/interface/trait
+                            [],
                         );
 
                         // Add collected use statements to the new namespace
@@ -150,12 +153,14 @@ class Builder
                             $newNamespace->stmts = array_merge(
                                 $namespaceUseStatements[$namespaceName],
                                 [new Nop()],
-                                $newNamespace->stmts,
                             );
                         }
 
+                        // Add the current class to the new namespace
+                        $newNamespace->stmts[] = $stmt;
+
                         $classCode = $printer->prettyPrint([$newNamespace]);
-                        $this->saveClassToFile($stmt, $namespace, $classCode, $filePath);
+                        $this->saveClassToFile($stmt, $namespace, '<?php' . PHP_EOL . $classCode, $filePath);
                     }
                 }
             } elseif ($this->neededNode($node)) {
@@ -165,9 +170,13 @@ class Builder
 
                 // Add global use statements for classes in the global scope
                 $classCode = $printer->prettyPrint(
-                    array_merge($globalUseStatements, [new Nop()], [$node]),
+                    array_merge(
+                        $globalUseStatements ?: [],
+                        [new Nop()],
+                        [$node],
+                    ),
                 );
-                $this->saveClassToFile($node, '', $classCode, $filePath);
+                $this->saveClassToFile($node, '', '<?php' . PHP_EOL . $classCode, $filePath);
             }
         }
     }
@@ -197,8 +206,7 @@ class Builder
         }
 
         $targetFile = $targetDir . '/' . $class . '.php';
-
-        if (false === file_put_contents($targetFile, "<?php\n\n" . $classCode)) {
+        if (false === file_put_contents($targetFile, $classCode)) {
             exit("Error: Failed to save transformed file: {$targetFile}\n");
         }
     }
