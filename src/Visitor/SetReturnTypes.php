@@ -193,7 +193,12 @@ class SetReturnTypes extends ModuleVisitor
             $imports = $this->getImports();
 
             foreach ($imports as $alias => $fullyQualifiedClassName) {
-                if ($alias === $typeNameWithoutSlash || $fullyQualifiedClassName === $typeNameWithoutSlash) {
+                if ($alias === $typeNameWithoutSlash || $fullyQualifiedClassName === $typeNameWithoutSlash
+                    || (str_contains($typeNameWithoutSlash, '\\') && str_ends_with(
+                        $fullyQualifiedClassName,
+                        $typeName,
+                    ))
+                ) {
                     return $typeNameWithoutSlash;
                 }
             }
