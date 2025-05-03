@@ -187,6 +187,9 @@ trait MockTools
         if (null === $definition) {
             return null;
         }
+        if (!empty($definition->getOutput())) {
+            echo $definition->getOutput();
+        }
         if (!empty($definition->getException())) {
             throw new ($definition->getException())();
         }
