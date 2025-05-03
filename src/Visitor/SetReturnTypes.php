@@ -92,7 +92,7 @@ class SetReturnTypes extends ModuleVisitor
 
             foreach ($node->stmts as $method) {
                 if ($method instanceof ClassMethod) {
-                    if ('__construct' === $method->name->name) {
+                    if (str_starts_with($method->name->name, '__')) {
                         continue;
                     }
                     $methodName = $className . '::' . $method->name->name;
