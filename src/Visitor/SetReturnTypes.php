@@ -88,7 +88,6 @@ class SetReturnTypes extends ModuleVisitor
             if (!isset($node->stmts)) {
                 return null;
             }
-
             $data = $this->dependenceGraph->getEntityData($className);
 
             foreach ($node->stmts as $method) {
@@ -101,14 +100,14 @@ class SetReturnTypes extends ModuleVisitor
                         && !empty($this->config->resultTypes) && !empty($this->config->resultTypes[$methodName])) {
                         $method->returnType = new Identifier($this->config->resultTypes[$methodName]);
                     }
-                    if (!$method->returnType) {
-                        $this->addReturnType($method);
-                    }
                     if (!$method->returnType && null !== $data) {
                         $method->returnType = $data->getMethodReturnTypeRecursively(
                             $method->name->name,
                             $this->dependenceGraph,
                         );
+                    }
+                    if (!$method->returnType) {
+                        $this->addReturnType($method);
                     }
                     $data?->setMethodReturnType($method->name->name, $method->returnType);
                 }
@@ -125,7 +124,6 @@ class SetReturnTypes extends ModuleVisitor
             return true;
         }
 
-        // Рекурсивно проверяем дочерние узлы
         foreach ($node->getSubNodeNames() as $subNodeName) {
             $subNode = $node->{$subNodeName};
             if (is_array($subNode)) {
@@ -144,19 +142,14 @@ class SetReturnTypes extends ModuleVisitor
 
     private function addReturnType(ClassMethod $method): void
     {
-        // Если тело метода существует, анализируем его
         if (isset($method->stmts)) {
             $hasReturn = false;
-
             foreach ($method->stmts as $stmt) {
-                // Проверяем, содержит ли узел оператор return
                 if ($this->containsReturnStatement($stmt)) {
                     $hasReturn = true;
                     break;
                 }
             }
-
-            // Устанавливаем тип mixed, если есть return, иначе void
             $method->returnType = $hasReturn ? new Identifier('mixed') : new Identifier('void');
 
             return;
