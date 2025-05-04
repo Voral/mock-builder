@@ -16,46 +16,46 @@ trait MockTools
      * @var array Tracks whether a method has been automatically registered.
      *            Keys are method names, and values are booleans indicating registration status.
      */
-    private static array $auto = [];
+    protected static array $auto = [];
 
     /**
      * @var array Tracks the number of calls for each mocked method.
      *            Keys are method names, and values are the call counts.
      */
-    private static array $mockCounter = [];
+    protected static array $mockCounter = [];
 
     /**
      * @var MockDefinition[] Default mock definitions for methods.
      *                       Keys are method names, and values are instances of MockDefinition.
      */
-    private static array $mockDefault = [];
+    protected static array $mockDefault = [];
 
     /**
      * @var bool[] Indicates whether named mode is enabled for mocked methods.
      *             Keys are method names, and values are booleans.
      */
-    private static array $mockNamedMode = [];
+    protected static array $mockNamedMode = [];
 
     /**
      * @var array Stores all parameters passed to mocked methods across all calls.
      *            Keys are method names, and values are associative arrays where keys are indices (numeric or hash)
      *            and values are parameter sets.
      */
-    private static array $mockParams = [];
+    protected static array $mockParams = [];
 
     /**
      * @var MockDefinition[][] Stores predefined mock definitions for methods.
      *                         Keys are method names, and values are arrays of MockDefinition objects.
      */
-    private static array $mockDefinitions = [];
+    protected static array $mockDefinitions = [];
 
     /**
      * @var array Caches reflection data for method parameters.
      *            Keys are method names, and values are arrays of default parameter values.
      */
-    private static array $reflectionMethodParams = [];
+    protected static array $reflectionMethodParams = [];
 
-    private static array $mockEntity = [];
+    protected static array $mockEntity = [];
 
     /**
      * Resets and configures mock data for a specific method.
@@ -76,19 +76,19 @@ trait MockTools
         bool $namedMode = false,
     ): void {
         if ($namedMode) {
-            $parameters = self::getReflectionMethodParams($methodName);
+            $parameters = static::getReflectionMethodParams($methodName);
         }
-        self::$mockDefinitions[$methodName] = [];
+        static::$mockDefinitions[$methodName] = [];
         foreach ($definitions as $index => $definition) {
             if ($namedMode) {
                 $index = static::getIndex($definition->getParams(), $parameters);
             }
             $definition->setIndex($index);
-            self::$mockDefinitions[$methodName][$index] = $definition;
+            static::$mockDefinitions[$methodName][$index] = $definition;
         }
-        self::$mockCounter[$methodName] = 0;
-        self::$mockDefault[$methodName] = $defaultDefinition;
-        self::$mockNamedMode[$methodName] = $namedMode;
+        static::$mockCounter[$methodName] = 0;
+        static::$mockDefault[$methodName] = $defaultDefinition;
+        static::$mockNamedMode[$methodName] = $namedMode;
     }
 
     /**
@@ -103,7 +103,7 @@ trait MockTools
      */
     private static function getIndex(array $params, array $parameters): string
     {
-        $params = self::applyDefaultValues($params, $parameters);
+        $params = static::applyDefaultValues($params, $parameters);
 
         return hash('sha256', serialize($params));
     }
@@ -121,18 +121,18 @@ trait MockTools
      */
     private static function getReflectionMethodParams(string $methodName): array
     {
-        if (!isset(self::$reflectionMethodParams[$methodName])) {
+        if (!isset(static::$reflectionMethodParams[$methodName])) {
             $reflectionMethod = new \ReflectionMethod(static::class, $methodName);
             $params = $reflectionMethod->getParameters();
-            self::$reflectionMethodParams[$methodName] = [];
+            static::$reflectionMethodParams[$methodName] = [];
             foreach ($params as $parameter) {
-                self::$reflectionMethodParams[$methodName][] = $parameter->isDefaultValueAvailable()
+                static::$reflectionMethodParams[$methodName][] = $parameter->isDefaultValueAvailable()
                     ? $parameter->getDefaultValue()
                     : null;
             }
         }
 
-        return self::$reflectionMethodParams[$methodName];
+        return static::$reflectionMethodParams[$methodName];
     }
 
     /**
@@ -170,8 +170,8 @@ trait MockTools
      */
     public static function executeMocked(string $methodName, array $params, ?object $entity = null): mixed
     {
-        if (!isset(self::$mockCounter[$methodName])) {
-            self::registerAuto($methodName);
+        if (!isset(static::$mockCounter[$methodName])) {
+            static::registerAuto($methodName);
         }
 
         if (static::$mockNamedMode[$methodName]) {
@@ -207,7 +207,7 @@ trait MockTools
      */
     public static function getMockedParams(string $methodName, int|string $index): array
     {
-        return self::$mockParams[$methodName][$index] ?? [];
+        return static::$mockParams[$methodName][$index] ?? [];
     }
 
     /**
@@ -219,7 +219,7 @@ trait MockTools
      */
     public static function getMockedParamsAll(string $methodName): array
     {
-        return self::$mockParams[$methodName] ?? [];
+        return static::$mockParams[$methodName] ?? [];
     }
 
     /**
@@ -231,12 +231,12 @@ trait MockTools
      */
     public static function getMockedCounter(string $methodName): int
     {
-        return self::$mockCounter[$methodName] ?? 0;
+        return static::$mockCounter[$methodName] ?? 0;
     }
 
     public static function getMockedEntity(string $methodName): ?object
     {
-        return self::$mockEntity[$methodName] ?? null;
+        return static::$mockEntity[$methodName] ?? null;
     }
 
     /**
@@ -250,7 +250,7 @@ trait MockTools
      */
     protected static function registerAuto(string $methodName): void
     {
-        self::$auto[$methodName] = true;
-        self::cleanMockData($methodName);
+        static::$auto[$methodName] = true;
+        static::cleanMockData($methodName);
     }
 }
