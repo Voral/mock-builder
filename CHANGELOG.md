@@ -1,3 +1,22 @@
+# 0.8.0 (2025-05-04)
+
+### New features
+- prioritize return type inference with fallback to PHPDoc
+- prioritize return types from current class over parent classes
+
+### Fixes
+- restore echo output in mocked methods
+- ensure unique indices for mock definitions in named mode
+- skip all magic methods when inferring return types
+- skip constructor when inferring return types
+- resolve types using namespace aliases and root namespace
+- resolve types using root namespace and imports
+- ensure `use` statements are added to generated files
+
+### Refactoring
+- update return type of setIndex in MockDefinition
+- update access modifiers and replace self with static in MockTools
+
 # 0.7.2 (2025-05-02)
 
 ### Fixes
