@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vasoft\MockBuilder\Mocker;
+namespace Bitrix\Mocker;
 
 /**
  * MockDefinition represents the configuration for a mocked method.
@@ -41,15 +41,11 @@ class MockDefinition
      *
      * @param int|string $value the new index or hash value
      *
-     * @return string the updated index or hash
-     *
      * @internal this method should not be called directly by users
      */
-    public function setIndex(int|string $value): string
+    public function setIndex(int|string $value): void
     {
         $this->hash = $value;
-
-        return $this->hash;
     }
 
     /**
