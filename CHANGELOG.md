@@ -1,3 +1,8 @@
+# 1.1.0 (2025-05-07)
+
+### New features
+- add conditional copying of MockDefinition and MockFunctions
+
 # 1.0.0 (2025-05-07)
 
 ### New features
