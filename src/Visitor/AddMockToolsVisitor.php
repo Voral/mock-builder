@@ -18,8 +18,12 @@ class AddMockToolsVisitor extends ModuleVisitor
     private string $baseNamespace;
     private string $traitName;
 
-    public function __construct(string $baseNamespace, bool $skipThrowable = false)
-    {
+    public function __construct(
+        string $baseNamespace,
+        $skipThrowable = false,
+        private readonly bool $copyDefinition = true,
+        private readonly bool $copyFunction = true,
+    ) {
         parent::__construct($skipThrowable);
         $this->baseNamespace = trim($baseNamespace, '\\');
         $this->traitName = '\\' . $baseNamespace . '\Mocker\MockTools';
@@ -36,19 +40,24 @@ class AddMockToolsVisitor extends ModuleVisitor
         if (!is_dir($traitTargetDir)) {
             mkdir($traitTargetDir, 0o775, true);
         }
-        $this->copyMockTools($traitTargetDir, '/MockTools.php');
-        $this->copyMockTools($traitTargetDir, '/MockDefinition.php');
-        $this->copyMockTools($traitTargetDir, '/MockFunctions.php');
+        $this->copyMockTools($traitTargetDir, '/MockTools.php', !$this->copyDefinition);
+        if ($this->copyDefinition) {
+            $this->copyMockTools($traitTargetDir, '/MockDefinition.php', false);
+        }
+        if ($this->copyFunction) {
+            $this->copyMockTools($traitTargetDir, '/MockFunctions.php', false);
+        }
     }
 
-    private function copyMockTools(string $targetPath, string $targetFile): void
+    private function copyMockTools(string $targetPath, string $targetFile, bool $addDefinitionUse): void
     {
         $fullPath = $targetPath . $targetFile;
         if (!file_exists($fullPath)) {
             $content = file_get_contents(__DIR__ . '/../Mocker' . $targetFile);
+            $uesString = $addDefinitionUse ? (PHP_EOL . 'use Vasoft\MockBuilder\Mocker\MockDefinition;') : '';
             $content = str_replace(
                 'namespace Vasoft\MockBuilder\Mocker;',
-                'namespace ' . $this->baseNamespace . '\Mocker;',
+                'namespace ' . $this->baseNamespace . '\Mocker;' . $uesString,
                 $content,
             );
             file_put_contents($fullPath, $content);

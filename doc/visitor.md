@@ -112,6 +112,8 @@ during testing.
 - `$baseNamespace` (string): The base namespace where the `MockTools` trait will be copied.
 - `$skipThrowable` (bool, optional): If `true`, classes that are descendants of `Throwable` or `Exception` will be
   skipped.
+- `$copyDefinition` (bool, optional): If `true`, the file `MockDefinition.php` will be copied to the target namespace. It is used to define the behavior of mocks.
+- `$copyFunction` (bool, optional): If `true`, the file `MockFunctions.php` will be copied to the target namespace. It contains helper functions for working with mocks.
 
 **Note:**  
 The `MockTools` trait is copied into the target directory with an updated namespace. This makes the mocks autonomous, as

@@ -110,8 +110,9 @@ class MyClass
 **Параметры конструктора:**
 
 - `$baseNamespace` (string): Базовое пространство имён, в которое будет скопирован трейт `MockTools`.
-- `$skipThrowable` (bool, необязательный): Если `true`, классы, являющиеся потомками `Throwable` или `Exception`, будут
-  пропущены.
+- `$skipThrowable` (bool, необязательный): Если `true`, классы, являющиеся потомками `Throwable` или `Exception`, будут пропущены.
+- `$copyDefinition` (bool,необязательный): Если `true`, файл `MockDefinition.php` будет скопирован в целевое пространство имён. Используется для определения поведения моков.
+- `$copyFunction` (bool,необязательный): Если `true`, файл `MockFunctions.php` будет скопирован в целевое пространство имён. Содержит вспомогательные функции для работы с моками.
 
 **Примечание:**  
 Трейт `MockTools` копируется в целевую директорию с обновлением пространства имён. Это делает моки автономными, так как
@@ -120,7 +121,7 @@ class MyClass
 **Пример использования:**
 
 ```php
-new \Vasoft\MockBuilder\Visitor\AddMockToolsVisitor('App', true);
+new \Vasoft\MockBuilder\Visitor\AddMockToolsVisitor('App', false, true, true);
 ```
 
 ---
