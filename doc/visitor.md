@@ -125,6 +125,12 @@ new \Vasoft\MockBuilder\Visitor\AddMockToolsVisitor('App', true);
 
 ---
 
+### 4.  `RemoveFinalVisitor`
+
+AST visitor to remove `final` modifiers from classes and methods.
+
+---
+
 ## Creating Custom Visitors
 
 You can create custom visitors to implement additional AST processing logic. To do this:
