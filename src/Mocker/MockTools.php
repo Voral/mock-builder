@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bitrix\Mocker;
+namespace Vasoft\MockBuilder\Mocker;
 
 /**
  * MockTools is a trait that provides tools for controlling the behavior of mocked methods during testing.

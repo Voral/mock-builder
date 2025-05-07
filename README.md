@@ -118,3 +118,10 @@ The project is distributed under the MIT license. For details, see the [LICENSE]
 ### Changes
 
 The change history can be found in the [CHANGELOG.md](CHANGELOG.md) file.
+
+### Todo
+
+- [ ] Add testing for the entire package  
+  _It is necessary to cover all key classes with unit tests for the further development of the project._
+- [ ] Add the ability to interact with mocks in a familiar way, as in PHPUnit  
+  _For example, implement the `getMock` method with support for `expects`._

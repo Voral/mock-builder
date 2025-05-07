@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Bitrix\Mocker;
+namespace Vasoft\MockBuilder\Mocker;
 
 /**
  * MockDefinition represents the configuration for a mocked method.
