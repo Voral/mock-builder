@@ -1,3 +1,8 @@
+# 1.0.0 (2025-05-07)
+
+### New features
+- add RemoveFinalVisitor to remove `final` modifiers
+
 # 0.8.0 (2025-05-04)
 
 ### New features
